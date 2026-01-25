@@ -1,336 +1,360 @@
+// app.js
 /**
- * Titanic EDA Dashboard - Main Application Script
- * This file contains all data processing, visualization, and interaction logic.
+ * Titanic EDA Dashboard
+ * Main JavaScript Application
  * 
- * Dataset Configuration:
- * - Update the DEFAULT_CSV_URL to point to your dataset
- * - Update column name constants if using a different dataset
+ * Dataset Adaptation Notes:
+ * 1. To change CSV file: Update the file input handling (no hardcoded filename)
+ * 2. To adjust columns: Update column references in analysis functions
+ * 3. To modify visualizations: Update Chart.js configurations
  */
-
-// ==============================================
-// CONFIGURATION & CONSTANTS
-// ==============================================
-
-// Default dataset URL (for demonstration)
-const DEFAULT_CSV_URL = 'https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv';
-
-// Titanic dataset column names (Update these if using a different dataset)
-const COLUMNS = {
-    PASSENGER_ID: 'PassengerId',
-    SURVIVED: 'Survived',
-    PCLASS: 'Pclass',
-    NAME: 'Name',
-    SEX: 'Sex',
-    AGE: 'Age',
-    SIBSP: 'SibSp',
-    PARCH: 'Parch',
-    TICKET: 'Ticket',
-    FARE: 'Fare',
-    CABIN: 'Cabin',
-    EMBARKED: 'Embarked'
-};
-
-// Chart color scheme
-const CHART_COLORS = {
-    primary: 'rgba(52, 152, 219, 0.7)',
-    secondary: 'rgba(155, 89, 182, 0.7)',
-    success: 'rgba(46, 204, 113, 0.7)',
-    danger: 'rgba(231, 76, 60, 0.7)',
-    warning: 'rgba(241, 196, 15, 0.7)',
-    info: 'rgba(52, 152, 219, 0.7)',
-    light: 'rgba(236, 240, 241, 0.7)',
-    dark: 'rgba(52, 73, 94, 0.7)',
-    female: 'rgba(255, 99, 132, 0.7)',
-    male: 'rgba(54, 162, 235, 0.7)',
-    survived: 'rgba(46, 204, 113, 0.7)',
-    deceased: 'rgba(231, 76, 60, 0.7)'
-};
 
 // Global variables
-let titanicData = [];
+let titanicData = null;
 let charts = {}; // Store chart instances for potential updates
-let analysisResults = {};
 
-// ==============================================
-// DOM ELEMENT REFERENCES
-// ==============================================
+// DOM Elements
+const fileInput = document.getElementById('csvFile');
+const runEDAButton = document.getElementById('runEDA');
+const resetButton = document.getElementById('resetDashboard');
+const loadingSpinner = document.getElementById('loadingSpinner');
+const dataPreview = document.getElementById('dataPreview');
+const dataTypesTable = document.getElementById('dataTypesTable');
+const outlierTable = document.getElementById('outlierTable');
+const survivalStatsTable = document.getElementById('survivalStatsTable');
 
-const domElements = {
-    fileInput: document.getElementById('csvFile'),
-    fileDropArea: document.getElementById('fileDropArea'),
-    runEDAButton: document.getElementById('runEDA'),
-    loadingSpinner: document.getElementById('loadingSpinner'),
-    dataPreview: document.getElementById('dataPreview'),
-    previewTable: document.getElementById('previewTable'),
-    rowCount: document.getElementById('rowCount'),
-    colCount: document.getElementById('colCount'),
+// Initialize the dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Titanic EDA Dashboard initialized');
     
-    // Sections
-    dataTypesSection: document.getElementById('dataTypesSection'),
-    distributionSection: document.getElementById('distributionSection'),
-    outlierSection: document.getElementById('outlierSection'),
-    correlationSection: document.getElementById('correlationSection'),
-    survivalSection: document.getElementById('survivalSection'),
-    insightsSection: document.getElementById('insightsSection'),
+    // Event Listeners
+    fileInput.addEventListener('change', handleFileSelect);
+    runEDAButton.addEventListener('click', runFullEDA);
+    resetButton.addEventListener('click', resetDashboard);
     
-    // Missing values
-    columnInfoTable: document.getElementById('columnInfoTable'),
-    missingSummary: document.getElementById('missingSummary'),
-    
-    // Outliers
-    ageOutlierCount: document.getElementById('ageOutlierCount'),
-    fareOutlierCount: document.getElementById('fareOutlierCount'),
-    outlierImpactText: document.getElementById('outlierImpactText'),
-    
-    // Correlation
-    topCorrelations: document.getElementById('topCorrelations'),
-    correlationInsight: document.getElementById('correlationInsight'),
-    
-    // Survival rates
-    overallSurvivalRate: document.getElementById('overallSurvivalRate'),
-    femaleSurvivalRate: document.getElementById('femaleSurvivalRate'),
-    firstClassSurvivalRate: document.getElementById('firstClassSurvivalRate'),
-    
-    // Insights
-    topFactor: document.getElementById('topFactor'),
-    factorExplanation: document.getElementById('factorExplanation'),
-    supportingEvidence: document.getElementById('supportingEvidence'),
-    keyInsights: document.getElementById('keyInsights')
-};
-
-// ==============================================
-// INITIALIZATION & EVENT LISTENERS
-// ==============================================
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
 
 /**
- * Initialize the dashboard and set up event listeners
- */
-function initializeDashboard() {
-    // Set up file input event listeners
-    domElements.fileInput.addEventListener('change', handleFileSelect);
-    
-    // Set up drag and drop
-    setupDragAndDrop();
-    
-    // Set up EDA button
-    domElements.runEDAButton.addEventListener('click', runFullEDA);
-    
-    // Load default dataset for demonstration
-    loadDefaultDataset();
-}
-
-/**
- * Set up drag and drop functionality for file upload
- */
-function setupDragAndDrop() {
-    const dropArea = domElements.fileDropArea;
-    
-    // Prevent default drag behaviors
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-    });
-    
-    // Highlight drop area when dragging over
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, highlightDropArea, false);
-    });
-    
-    // Remove highlight when dragging leaves
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, unhighlightDropArea, false);
-    });
-    
-    // Handle dropped files
-    dropArea.addEventListener('drop', handleDrop, false);
-}
-
-function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-}
-
-function highlightDropArea() {
-    domElements.fileDropArea.classList.add('dragover');
-}
-
-function unhighlightDropArea() {
-    domElements.fileDropArea.classList.remove('dragover');
-}
-
-function handleDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    
-    if (files.length > 0) {
-        domElements.fileInput.files = files;
-        handleFileSelect({ target: domElements.fileInput });
-    }
-}
-
-/**
- * Load a default dataset for demonstration purposes
- */
-function loadDefaultDataset() {
-    console.log('Loading default dataset from:', DEFAULT_CSV_URL);
-    
-    Papa.parse(DEFAULT_CSV_URL, {
-        download: true,
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-            if (results.errors.length > 0) {
-                console.warn('Parsing errors:', results.errors);
-                alert('Some errors occurred while parsing the CSV. Analysis may be incomplete.');
-            }
-            
-            titanicData = results.data;
-            console.log(`Loaded ${titanicData.length} rows with ${Object.keys(titanicData[0]).length} columns`);
-            
-            // Enable the EDA button and update overview
-            domElements.runEDAButton.disabled = false;
-            updateDataOverview();
-            showDataPreview();
-        },
-        error: function(error) {
-            console.error('Error loading default dataset:', error);
-            alert('Error loading default dataset. Please upload a CSV file manually.');
-        }
-    });
-}
-
-/**
- * Handle file selection from input element
+ * Handle CSV file selection and parsing
  */
 function handleFileSelect(event) {
     const file = event.target.files[0];
+    if (!file) return;
     
-    if (!file) {
-        return;
-    }
-    
-    // Check if it's a CSV file
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    // Validate file type
+    if (!file.name.endsWith('.csv')) {
         alert('Please select a CSV file.');
         return;
     }
     
-    console.log(`Loading file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+    showLoading(true);
     
-    // Parse the CSV file
+    // Parse CSV using PapaParse
     Papa.parse(file, {
         header: true,
-        dynamicTyping: true,
+        dynamicTyping: true, // Automatically convert numbers
         skipEmptyLines: true,
         complete: function(results) {
             if (results.errors.length > 0) {
-                console.warn('Parsing errors:', results.errors);
-                alert('Some errors occurred while parsing the CSV. Analysis may be incomplete.');
+                alert('Error parsing CSV: ' + results.errors[0].message);
+                showLoading(false);
+                return;
             }
             
             titanicData = results.data;
-            console.log(`Loaded ${titanicData.length} rows with ${Object.keys(titanicData[0]).length} columns`);
+            console.log('Data loaded:', titanicData.length, 'rows');
             
-            // Enable the EDA button and update overview
-            domElements.runEDAButton.disabled = false;
-            updateDataOverview();
-            showDataPreview();
+            // Update overview statistics
+            updateOverview();
+            showLoading(false);
+            
+            // Enable the EDA button
+            runEDAButton.disabled = false;
+            runEDAButton.innerHTML = '<i class="fas fa-play-circle"></i> Run Full EDA Analysis';
         },
         error: function(error) {
-            console.error('Error parsing CSV:', error);
-            alert('Error parsing CSV file. Please check the file format and try again.');
+            alert('Error loading file: ' + error.message);
+            showLoading(false);
         }
     });
 }
 
-// ==============================================
-// DATA PROCESSING FUNCTIONS
-// ==============================================
-
 /**
- * Update the data overview section with basic dataset stats
+ * Show/hide loading spinner
  */
-function updateDataOverview() {
-    if (!titanicData || titanicData.length === 0) {
-        return;
-    }
-    
-    const rowCount = titanicData.length;
-    const colCount = Object.keys(titanicData[0]).length;
-    
-    domElements.rowCount.textContent = rowCount;
-    domElements.colCount.textContent = colCount;
+function showLoading(show) {
+    loadingSpinner.style.display = show ? 'block' : 'none';
 }
 
 /**
- * Display a preview of the data in a table
+ * Update overview statistics and data preview
  */
-function showDataPreview() {
-    if (!titanicData || titanicData.length === 0) {
-        return;
-    }
+function updateOverview() {
+    if (!titanicData || titanicData.length === 0) return;
     
-    // Show the preview section
-    domElements.dataPreview.style.display = 'block';
+    // Update basic stats
+    document.getElementById('rowCount').textContent = titanicData.length;
+    document.getElementById('colCount').textContent = Object.keys(titanicData[0]).length;
     
-    // Clear existing table content
-    domElements.previewTable.innerHTML = '';
+    // Calculate survival rate
+    const survivedCount = titanicData.filter(p => p.Survived === 1).length;
+    const survivalRate = ((survivedCount / titanicData.length) * 100).toFixed(1);
+    document.getElementById('survivalRate').textContent = `${survivalRate}%`;
     
-    // Get column names
+    // Calculate total missing values
+    let missingCount = 0;
     const columns = Object.keys(titanicData[0]);
     
-    // Create table header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    
-    columns.forEach(col => {
-        const th = document.createElement('th');
-        th.textContent = col;
-        headerRow.appendChild(th);
+    titanicData.forEach(row => {
+        columns.forEach(col => {
+            if (row[col] === null || row[col] === undefined || row[col] === '') {
+                missingCount++;
+            }
+        });
     });
     
-    thead.appendChild(headerRow);
-    domElements.previewTable.appendChild(thead);
+    document.getElementById('missingValues').textContent = missingCount;
     
-    // Create table body with first 10 rows
-    const tbody = document.createElement('tbody');
+    // Update data preview (first 5 rows)
+    updateDataPreview();
     
-    for (let i = 0; i < Math.min(10, titanicData.length); i++) {
-        const row = document.createElement('tr');
-        
-        columns.forEach(col => {
-            const td = document.createElement('td');
-            let value = titanicData[i][col];
-            
-            // Handle undefined/null values
-            if (value === undefined || value === null) {
-                value = '';
-                td.classList.add('text-muted');
-            }
-            
-            // Truncate long values
-            if (typeof value === 'string' && value.length > 30) {
-                value = value.substring(0, 30) + '...';
-            }
-            
-            td.textContent = value;
-            row.appendChild(td);
-        });
-        
-        tbody.appendChild(row);
-    }
-    
-    domElements.previewTable.appendChild(tbody);
+    // Update data types table
+    updateDataTypesTable();
 }
 
 /**
- * Analyze data types and missing values
+ * Update data preview table
  */
-function analyzeDataTypesAndMissingValues() {
+function updateDataPreview() {
+    const previewBody = dataPreview.querySelector('tbody');
+    previewBody.innerHTML = '';
+    
+    // Show first 5 rows
+    const previewRows = titanicData.slice(0, 5);
+    
+    previewRows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${row.PassengerId || ''}</td>
+            <td>${row.Survived !== undefined ? row.Survived : ''}</td>
+            <td>${row.Pclass || ''}</td>
+            <td class="text-truncate" style="max-width: 150px;">${row.Name || ''}</td>
+            <td>${row.Sex || ''}</td>
+            <td>${row.Age !== undefined ? row.Age.toFixed(1) : ''}</td>
+            <td>${row.SibSp || ''}</td>
+            <td>${row.Parch || ''}</td>
+            <td>${row.Ticket || ''}</td>
+            <td>${row.Fare !== undefined ? row.Fare.toFixed(2) : ''}</td>
+            <td>${row.Cabin || ''}</td>
+            <td>${row.Embarked || ''}</td>
+        `;
+        previewBody.appendChild(tr);
+    });
+}
+
+/**
+ * Update data types and missing values table
+ */
+function updateDataTypesTable() {
+    const tableBody = dataTypesTable.querySelector('tbody');
+    tableBody.innerHTML = '';
+    
+    if (!titanicData || titanicData.length === 0) return;
+    
+    const columns = Object.keys(titanicData[0]);
+    
+    columns.forEach(col => {
+        // Determine data type
+        const sampleValue = titanicData.find(row => row[col] !== null && row[col] !== undefined && row[col] !== '');
+        let dataType = 'Unknown';
+        
+        if (sampleValue !== undefined) {
+            dataType = typeof sampleValue[col];
+            if (dataType === 'number') {
+                // Check if it's integer or float
+                dataType = Number.isInteger(sampleValue[col]) ? 'Integer' : 'Float';
+            } else {
+                dataType = dataType.charAt(0).toUpperCase() + dataType.slice(1);
+            }
+        }
+        
+        // Count missing values
+        const missingCount = titanicData.filter(row => 
+            row[col] === null || row[col] === undefined || row[col] === ''
+        ).length;
+        
+        const missingPercent = ((missingCount / titanicData.length) * 100).toFixed(1);
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${col}</strong></td>
+            <td><span class="badge bg-info">${dataType}</span></td>
+            <td>${missingCount}</td>
+            <td>
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar ${missingPercent > 20 ? 'bg-danger' : 'bg-warning'}" 
+                         role="progressbar" 
+                         style="width: ${missingPercent}%">
+                        ${missingPercent}%
+                    </div>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+    
+    // Create missing data chart
+    createMissingDataChart(columns);
+}
+
+/**
+ * Create missing data visualization
+ */
+function createMissingDataChart(columns) {
+    const ctx = document.getElementById('missingDataChart').getContext('2d');
+    
+    // Calculate missing percentages for each column
+    const missingPercentages = columns.map(col => {
+        const missingCount = titanicData.filter(row => 
+            row[col] === null || row[col] === undefined || row[col] === ''
+        ).length;
+        return ((missingCount / titanicData.length) * 100).toFixed(1);
+    });
+    
+    // Destroy previous chart if exists
+    if (charts.missingDataChart) {
+        charts.missingDataChart.destroy();
+    }
+    
+    charts.missingDataChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: columns,
+            datasets: [{
+                label: '% Missing Values',
+                data: missingPercentages,
+                backgroundColor: missingPercentages.map(p => 
+                    p > 50 ? 'rgba(231, 76, 60, 0.8)' : 
+                    p > 20 ? 'rgba(241, 196, 15, 0.8)' : 
+                    'rgba(46, 204, 113, 0.8)'
+                ),
+                borderColor: missingPercentages.map(p => 
+                    p > 50 ? 'rgba(231, 76, 60, 1)' : 
+                    p > 20 ? 'rgba(241, 196, 15, 1)' : 
+                    'rgba(46, 204, 113, 1)'
+                ),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.parsed.x}% missing`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Percentage Missing (%)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Run the full EDA analysis pipeline
+ */
+function runFullEDA() {
     if (!titanicData || titanicData.length === 0) {
+        alert('Please load a CSV file first.');
         return;
     }
     
-    const columns = Object.keys(titanicData[0]);
-    const totalRows = titanicData.length;
-    let missingValues
+    showLoading(true);
+    
+    // Run analysis in sequence
+    setTimeout(() => {
+        // 1. Create distribution charts
+        createDistributionCharts();
+        
+        // 2. Perform outlier analysis
+        analyzeOutliers();
+        
+        // 3. Create correlation matrix
+        createCorrelationMatrix();
+        
+        // 4. Analyze survival factors
+        analyzeSurvivalFactors();
+        
+        // 5. Draw conclusions
+        drawConclusions();
+        
+        showLoading(false);
+        
+        // Scroll to insights section
+        document.getElementById('insights').scrollIntoView({ behavior: 'smooth' });
+    }, 500);
+}
+
+/**
+ * Create distribution charts for numerical and categorical variables
+ */
+function createDistributionCharts() {
+    // 1. Age Distribution
+    createHistogramChart('ageDistributionChart', 'Age Distribution', 
+        titanicData.map(p => p.Age).filter(age => !isNaN(age)), 
+        'Age (years)', 'Passenger Count', 15);
+    
+    // 2. Fare Distribution
+    createHistogramChart('fareDistributionChart', 'Fare Distribution', 
+        titanicData.map(p => p.Fare).filter(fare => !isNaN(fare) && fare < 200), // Filter extreme outliers for better visualization
+        'Fare (£)', 'Passenger Count', 20);
+    
+    // 3. Family Size Distribution (SibSp + Parch)
+    const familySizes = titanicData.map(p => (p.SibSp || 0) + (p.Parch || 0));
+    createHistogramChart('familyDistributionChart', 'Family Size Distribution', 
+        familySizes, 'Family Size (SibSp + Parch)', 'Passenger Count', 10);
+    
+    // 4. Gender Distribution
+    createPieChart('genderChart', 'Passenger Gender', 
+        ['Male', 'Female'], 
+        [
+            titanicData.filter(p => p.Sex === 'male').length,
+            titanicData.filter(p => p.Sex === 'female').length
+        ],
+        ['#3498db', '#e74c3c']);
+    
+    // 5. Passenger Class Distribution
+    createPieChart('classChart', 'Passenger Class', 
+        ['1st Class', '2nd Class', '3rd Class'], 
+        [
+            titanicData.filter(p => p.Pclass === 1).length,
+            titanicData.filter(p => p.Pclass === 2).length,
+            titanicData.filter(p => p.Pclass === 3).length
+        ],
+        ['#2ecc71', '#f1c40f', '#e74c3c']);
+    
+    // 6. Embarkation Port Distribution
+    const embarkedCounts = {};
+   
