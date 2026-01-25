@@ -27,3 +27,6 @@ In 'app.js':
 - Interactivity: Make the dashboard intuitive and guide the user. All the buttons should be clickable. Users should be able to upload a CSV file into the app and press “Run EDA” button to start the EDA pipeline. 
 
 The dashboard color palette should be in muted blue tones. I am going to deploy this app on GitHub Pages: “nndl” repository, “week1” directory. Add clear code comments in English.
+
+**Extra Prompt**
+After I deployed this on github pages Fare Outliers Box Plot and the data in sections 5. Correlation & Pattern Analysis, 6. Survival Factor Investigation, 7. Key Insights & Conclusion is not displayed. It seems there is something wrong with js file.
