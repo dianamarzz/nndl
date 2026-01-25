@@ -10,7 +10,7 @@ Strictly output in two separate code blocks:
 1.  Label the first as 'index.html' (for the complete HTML structure, integrated CSS for beautiful styling, and framework/CDN links).
 2.  Label the second as 'app.js' (for all JavaScript logic, data processing, and Chart.js interactions).
 
-Use the following CDN libraries: PapaParse (for CSV parsing), Chart.js (for all visualizations), and Bootstrap 5 (for responsive layout and styling components). All processing must be client-side. Link 'app.js' from ‘index.html' !!! Make sure all the buttons in the app work properly and backed runs correctly !!! 
+Use the following CDN libraries: PapaParse (for CSV parsing), Chart.js (for all visualizations), and Bootstrap 5 (for responsive layout and styling components). All processing must be client-side. Link 'app.js' from ‘index.html' !!! Make sure all the buttons in the app work properly and backend runs correctly !!! 
 
 Workflow:
 
