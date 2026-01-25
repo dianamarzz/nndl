@@ -1,499 +1,336 @@
-// app.js - Titanic EDA Dashboard
-// Comprehensive client-side EDA for the Titanic dataset
+/**
+ * Titanic EDA Dashboard - Main Application Script
+ * This file contains all data processing, visualization, and interaction logic.
+ * 
+ * Dataset Configuration:
+ * - Update the DEFAULT_CSV_URL to point to your dataset
+ * - Update column name constants if using a different dataset
+ */
 
-// Global variables to store data and analysis results
-let rawData = [];
-let cleanedData = [];
-let analysisResults = {
-    overview: {},
-    dataQuality: {},
-    univariate: {},
-    bivariate: {},
-    outliers: {},
-    insights: []
+// ==============================================
+// CONFIGURATION & CONSTANTS
+// ==============================================
+
+// Default dataset URL (for demonstration)
+const DEFAULT_CSV_URL = 'https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv';
+
+// Titanic dataset column names (Update these if using a different dataset)
+const COLUMNS = {
+    PASSENGER_ID: 'PassengerId',
+    SURVIVED: 'Survived',
+    PCLASS: 'Pclass',
+    NAME: 'Name',
+    SEX: 'Sex',
+    AGE: 'Age',
+    SIBSP: 'SibSp',
+    PARCH: 'Parch',
+    TICKET: 'Ticket',
+    FARE: 'Fare',
+    CABIN: 'Cabin',
+    EMBARKED: 'Embarked'
 };
 
-// Chart instances for easy updates and destruction
-const chartInstances = {};
+// Chart color scheme
+const CHART_COLORS = {
+    primary: 'rgba(52, 152, 219, 0.7)',
+    secondary: 'rgba(155, 89, 182, 0.7)',
+    success: 'rgba(46, 204, 113, 0.7)',
+    danger: 'rgba(231, 76, 60, 0.7)',
+    warning: 'rgba(241, 196, 15, 0.7)',
+    info: 'rgba(52, 152, 219, 0.7)',
+    light: 'rgba(236, 240, 241, 0.7)',
+    dark: 'rgba(52, 73, 94, 0.7)',
+    female: 'rgba(255, 99, 132, 0.7)',
+    male: 'rgba(54, 162, 235, 0.7)',
+    survived: 'rgba(46, 204, 113, 0.7)',
+    deceased: 'rgba(231, 76, 60, 0.7)'
+};
 
-// Main initialization function
-document.addEventListener('DOMContentLoaded', function() {
-    initializeEventListeners();
-});
+// Global variables
+let titanicData = [];
+let charts = {}; // Store chart instances for potential updates
+let analysisResults = {};
+
+// ==============================================
+// DOM ELEMENT REFERENCES
+// ==============================================
+
+const domElements = {
+    fileInput: document.getElementById('csvFile'),
+    fileDropArea: document.getElementById('fileDropArea'),
+    runEDAButton: document.getElementById('runEDA'),
+    loadingSpinner: document.getElementById('loadingSpinner'),
+    dataPreview: document.getElementById('dataPreview'),
+    previewTable: document.getElementById('previewTable'),
+    rowCount: document.getElementById('rowCount'),
+    colCount: document.getElementById('colCount'),
+    
+    // Sections
+    dataTypesSection: document.getElementById('dataTypesSection'),
+    distributionSection: document.getElementById('distributionSection'),
+    outlierSection: document.getElementById('outlierSection'),
+    correlationSection: document.getElementById('correlationSection'),
+    survivalSection: document.getElementById('survivalSection'),
+    insightsSection: document.getElementById('insightsSection'),
+    
+    // Missing values
+    columnInfoTable: document.getElementById('columnInfoTable'),
+    missingSummary: document.getElementById('missingSummary'),
+    
+    // Outliers
+    ageOutlierCount: document.getElementById('ageOutlierCount'),
+    fareOutlierCount: document.getElementById('fareOutlierCount'),
+    outlierImpactText: document.getElementById('outlierImpactText'),
+    
+    // Correlation
+    topCorrelations: document.getElementById('topCorrelations'),
+    correlationInsight: document.getElementById('correlationInsight'),
+    
+    // Survival rates
+    overallSurvivalRate: document.getElementById('overallSurvivalRate'),
+    femaleSurvivalRate: document.getElementById('femaleSurvivalRate'),
+    firstClassSurvivalRate: document.getElementById('firstClassSurvivalRate'),
+    
+    // Insights
+    topFactor: document.getElementById('topFactor'),
+    factorExplanation: document.getElementById('factorExplanation'),
+    supportingEvidence: document.getElementById('supportingEvidence'),
+    keyInsights: document.getElementById('keyInsights')
+};
+
+// ==============================================
+// INITIALIZATION & EVENT LISTENERS
+// ==============================================
 
 /**
- * Initialize all event listeners for the dashboard
+ * Initialize the dashboard and set up event listeners
  */
-function initializeEventListeners() {
-    // Load and analyze data button
-    document.getElementById('loadDataBtn').addEventListener('click', loadAndAnalyzeData);
+function initializeDashboard() {
+    // Set up file input event listeners
+    domElements.fileInput.addEventListener('change', handleFileSelect);
     
-    // Generate report button
-    document.getElementById('generateReportBtn').addEventListener('click', generateFullReport);
+    // Set up drag and drop
+    setupDragAndDrop();
     
-    // Export buttons
-    document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
-    document.getElementById('exportCleanedCsvBtn').addEventListener('click', exportCleanedCsv);
+    // Set up EDA button
+    domElements.runEDAButton.addEventListener('click', runFullEDA);
+    
+    // Load default dataset for demonstration
+    loadDefaultDataset();
 }
 
 /**
- * Main function to load CSV data and perform EDA
+ * Set up drag and drop functionality for file upload
  */
-function loadAndAnalyzeData() {
-    const fileInput = document.getElementById('csvFile');
+function setupDragAndDrop() {
+    const dropArea = domElements.fileDropArea;
     
-    if (!fileInput.files.length) {
-        showStatus('Please select a CSV file to upload.', 'danger');
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    // Highlight drop area when dragging over
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlightDropArea, false);
+    });
+    
+    // Remove highlight when dragging leaves
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlightDropArea, false);
+    });
+    
+    // Handle dropped files
+    dropArea.addEventListener('drop', handleDrop, false);
+}
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+function highlightDropArea() {
+    domElements.fileDropArea.classList.add('dragover');
+}
+
+function unhighlightDropArea() {
+    domElements.fileDropArea.classList.remove('dragover');
+}
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    if (files.length > 0) {
+        domElements.fileInput.files = files;
+        handleFileSelect({ target: domElements.fileInput });
+    }
+}
+
+/**
+ * Load a default dataset for demonstration purposes
+ */
+function loadDefaultDataset() {
+    console.log('Loading default dataset from:', DEFAULT_CSV_URL);
+    
+    Papa.parse(DEFAULT_CSV_URL, {
+        download: true,
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            if (results.errors.length > 0) {
+                console.warn('Parsing errors:', results.errors);
+                alert('Some errors occurred while parsing the CSV. Analysis may be incomplete.');
+            }
+            
+            titanicData = results.data;
+            console.log(`Loaded ${titanicData.length} rows with ${Object.keys(titanicData[0]).length} columns`);
+            
+            // Enable the EDA button and update overview
+            domElements.runEDAButton.disabled = false;
+            updateDataOverview();
+            showDataPreview();
+        },
+        error: function(error) {
+            console.error('Error loading default dataset:', error);
+            alert('Error loading default dataset. Please upload a CSV file manually.');
+        }
+    });
+}
+
+/**
+ * Handle file selection from input element
+ */
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
         return;
     }
     
-    const file = fileInput.files[0];
-    
-    // Check if filename matches expected pattern
-    if (!file.name.toLowerCase().includes('titanic')) {
-        if (!confirm('The file name doesn\'t appear to be the Titanic dataset. Continue anyway?')) {
-            return;
-        }
+    // Check if it's a CSV file
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file.');
+        return;
     }
     
-    showLoading(true);
-    showStatus('Loading and parsing CSV file...', 'info');
+    console.log(`Loading file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
     
-    // Parse CSV with PapaParse
+    // Parse the CSV file
     Papa.parse(file, {
         header: true,
         dynamicTyping: true,
         skipEmptyLines: true,
         complete: function(results) {
             if (results.errors.length > 0) {
-                showStatus(`Error parsing CSV: ${results.errors[0].message}`, 'danger');
-                showLoading(false);
-                return;
+                console.warn('Parsing errors:', results.errors);
+                alert('Some errors occurred while parsing the CSV. Analysis may be incomplete.');
             }
             
-            rawData = results.data;
-            showStatus(`Successfully loaded ${rawData.length} rows with ${Object.keys(rawData[0]).length} columns`, 'success');
+            titanicData = results.data;
+            console.log(`Loaded ${titanicData.length} rows with ${Object.keys(titanicData[0]).length} columns`);
             
-            // Perform comprehensive EDA
-            performEDA();
-            
-            // Enable report generation and export buttons
-            document.getElementById('generateReportBtn').disabled = false;
-            document.getElementById('exportJsonBtn').disabled = false;
-            document.getElementById('exportCleanedCsvBtn').disabled = false;
-            
-            showLoading(false);
+            // Enable the EDA button and update overview
+            domElements.runEDAButton.disabled = false;
+            updateDataOverview();
+            showDataPreview();
         },
         error: function(error) {
-            showStatus(`Error loading file: ${error.message}`, 'danger');
-            showLoading(false);
+            console.error('Error parsing CSV:', error);
+            alert('Error parsing CSV file. Please check the file format and try again.');
         }
     });
 }
 
+// ==============================================
+// DATA PROCESSING FUNCTIONS
+// ==============================================
+
 /**
- * Perform comprehensive Exploratory Data Analysis
+ * Update the data overview section with basic dataset stats
  */
-function performEDA() {
-    // Clean the data first
-    cleanedData = cleanData(rawData);
+function updateDataOverview() {
+    if (!titanicData || titanicData.length === 0) {
+        return;
+    }
     
-    // Perform all analyses
-    analyzeDataOverview();
-    analyzeDataQuality();
-    performUnivariateAnalysis();
-    performBivariateAnalysis();
-    detectOutliers();
-    generateInsights();
+    const rowCount = titanicData.length;
+    const colCount = Object.keys(titanicData[0]).length;
     
-    // Update the UI with results
-    updateDashboard();
+    domElements.rowCount.textContent = rowCount;
+    domElements.colCount.textContent = colCount;
 }
 
 /**
- * Clean the dataset: handle missing values and data inconsistencies
+ * Display a preview of the data in a table
  */
-function cleanData(data) {
-    // Create a deep copy of the data
-    const cleaned = JSON.parse(JSON.stringify(data));
+function showDataPreview() {
+    if (!titanicData || titanicData.length === 0) {
+        return;
+    }
     
-    // Define strategies for missing values
-    const numericColumns = ['Age', 'Fare', 'SibSp', 'Parch'];
-    const categoricalColumns = ['Embarked', 'Cabin'];
+    // Show the preview section
+    domElements.dataPreview.style.display = 'block';
     
-    // Calculate median for numeric columns
-    const medians = {};
-    numericColumns.forEach(col => {
-        const values = cleaned.map(row => row[col]).filter(val => val != null && !isNaN(val));
-        if (values.length > 0) {
-            values.sort((a, b) => a - b);
-            const mid = Math.floor(values.length / 2);
-            medians[col] = values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
-        } else {
-            medians[col] = 0;
-        }
-    });
+    // Clear existing table content
+    domElements.previewTable.innerHTML = '';
     
-    // Calculate mode for categorical columns
-    const modes = {};
-    categoricalColumns.forEach(col => {
-        const valueCounts = {};
-        cleaned.forEach(row => {
-            if (row[col] != null && row[col] !== '') {
-                valueCounts[row[col]] = (valueCounts[row[col]] || 0) + 1;
-            }
-        });
-        
-        let maxCount = 0;
-        let mode = null;
-        Object.keys(valueCounts).forEach(key => {
-            if (valueCounts[key] > maxCount) {
-                maxCount = valueCounts[key];
-                mode = key;
-            }
-        });
-        modes[col] = mode || 'Unknown';
-    });
+    // Get column names
+    const columns = Object.keys(titanicData[0]);
     
-    // Apply cleaning strategies
-    cleaned.forEach(row => {
-        // Fill numeric missing values with median
-        numericColumns.forEach(col => {
-            if (row[col] == null || isNaN(row[col])) {
-                row[col] = medians[col];
-            }
-        });
-        
-        // Fill categorical missing values with mode
-        categoricalColumns.forEach(col => {
-            if (row[col] == null || row[col] === '') {
-                row[col] = modes[col];
-            }
-        });
-        
-        // Ensure Survived is boolean (0 or 1)
-        if (row.Survived != null) {
-            row.Survived = row.Survived ? 1 : 0;
-        }
-    });
-    
-    return cleaned;
-}
-
-/**
- * Analyze dataset overview: shape, preview, basic stats
- */
-function analyzeDataOverview() {
-    if (cleanedData.length === 0) return;
-    
-    const columns = Object.keys(cleanedData[0]);
-    const totalRows = cleanedData.length;
-    const totalColumns = columns.length;
-    
-    // Calculate survival rate
-    const survivedCount = cleanedData.filter(row => row.Survived === 1).length;
-    const survivalRate = ((survivedCount / totalRows) * 100).toFixed(1);
-    
-    // Store overview results
-    analysisResults.overview = {
-        shape: `${totalRows} rows × ${totalColumns} columns`,
-        survivalRate: `${survivalRate}% (${survivedCount}/${totalRows})`,
-        features: columns.join(', '),
-        columns: columns,
-        totalRows: totalRows,
-        survivedCount: survivedCount
-    };
-}
-
-/**
- * Analyze data quality: missing values and data types
- */
-function analyzeDataQuality() {
-    if (rawData.length === 0) return;
-    
-    const columns = Object.keys(rawData[0]);
-    const missingData = {};
-    const dataTypes = {};
-    const uniqueValues = {};
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
     
     columns.forEach(col => {
-        // Calculate missing values
-        const missingCount = rawData.filter(row => 
-            row[col] == null || row[col] === '' || (typeof row[col] === 'number' && isNaN(row[col]))
-        ).length;
-        const missingPercent = ((missingCount / rawData.length) * 100).toFixed(1);
-        
-        missingData[col] = {
-            count: missingCount,
-            percent: parseFloat(missingPercent)
-        };
-        
-        // Determine data type
-        const sampleValues = rawData.map(row => row[col]).filter(val => val != null);
-        let type = 'Unknown';
-        
-        if (sampleValues.length > 0) {
-            const firstType = typeof sampleValues[0];
-            if (firstType === 'number') {
-                type = 'Numeric';
-            } else if (firstType === 'string') {
-                type = 'String';
-            } else if (firstType === 'boolean') {
-                type = 'Boolean';
-            }
-        }
-        
-        dataTypes[col] = type;
-        
-        // Count unique values
-        const uniqueSet = new Set(sampleValues.map(val => String(val)));
-        uniqueValues[col] = uniqueSet.size;
+        const th = document.createElement('th');
+        th.textContent = col;
+        headerRow.appendChild(th);
     });
     
-    analysisResults.dataQuality = {
-        missingData: missingData,
-        dataTypes: dataTypes,
-        uniqueValues: uniqueValues
-    };
-}
-
-/**
- * Perform univariate analysis: distributions of individual features
- */
-function performUnivariateAnalysis() {
-    if (cleanedData.length === 0) return;
+    thead.appendChild(headerRow);
+    domElements.previewTable.appendChild(thead);
     
-    // Categorical features distributions
-    const categoricalFeatures = ['Pclass', 'Sex', 'Embarked'];
-    const categoricalDistributions = {};
+    // Create table body with first 10 rows
+    const tbody = document.createElement('tbody');
     
-    categoricalFeatures.forEach(feature => {
-        const counts = {};
-        cleanedData.forEach(row => {
-            const value = row[feature];
-            if (value != null) {
-                const key = String(value);
-                counts[key] = (counts[key] || 0) + 1;
-            }
-        });
+    for (let i = 0; i < Math.min(10, titanicData.length); i++) {
+        const row = document.createElement('tr');
         
-        // Convert to arrays for Chart.js
-        const labels = Object.keys(counts);
-        const data = Object.values(counts);
-        
-        categoricalDistributions[feature] = { labels, data };
-    });
-    
-    // Numeric features distributions
-    const numericFeatures = ['Age', 'Fare', 'SibSp', 'Parch'];
-    const numericDistributions = {};
-    
-    numericFeatures.forEach(feature => {
-        const values = cleanedData.map(row => row[feature]).filter(val => val != null);
-        
-        // Calculate histogram bins
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        const binCount = 15;
-        const binWidth = (max - min) / binCount;
-        
-        const bins = Array(binCount).fill(0);
-        const binLabels = [];
-        
-        for (let i = 0; i < binCount; i++) {
-            const binStart = min + i * binWidth;
-            const binEnd = binStart + binWidth;
-            binLabels.push(`${binStart.toFixed(0)}-${binEnd.toFixed(0)}`);
+        columns.forEach(col => {
+            const td = document.createElement('td');
+            let value = titanicData[i][col];
             
-            values.forEach(val => {
-                if (val >= binStart && (i === binCount - 1 ? val <= binEnd : val < binEnd)) {
-                    bins[i]++;
-                }
-            });
-        }
-        
-        // Calculate summary statistics
-        const sorted = [...values].sort((a, b) => a - b);
-        const mean = values.reduce((a, b) => a + b, 0) / values.length;
-        const median = sorted[Math.floor(sorted.length / 2)];
-        
-        numericDistributions[feature] = {
-            labels: binLabels,
-            data: bins,
-            stats: {
-                min: min,
-                max: max,
-                mean: mean.toFixed(2),
-                median: median.toFixed(2),
-                std: calculateStandardDeviation(values).toFixed(2)
+            // Handle undefined/null values
+            if (value === undefined || value === null) {
+                value = '';
+                td.classList.add('text-muted');
             }
-        };
-    });
-    
-    analysisResults.univariate = {
-        categorical: categoricalDistributions,
-        numeric: numericDistributions
-    };
-}
-
-/**
- * Perform bivariate analysis: relationships between features and survival
- */
-function performBivariateAnalysis() {
-    if (cleanedData.length === 0) return;
-    
-    // Survival by categorical features
-    const survivalByFeature = {};
-    const featuresToAnalyze = ['Pclass', 'Sex', 'Embarked'];
-    
-    featuresToAnalyze.forEach(feature => {
-        const values = [...new Set(cleanedData.map(row => row[feature]))];
-        const survivalRates = [];
-        
-        values.forEach(value => {
-            const group = cleanedData.filter(row => row[feature] === value);
-            const survived = group.filter(row => row.Survived === 1);
-            const survivalRate = group.length > 0 ? (survived.length / group.length) * 100 : 0;
-            survivalRates.push(survivalRate.toFixed(1));
+            
+            // Truncate long values
+            if (typeof value === 'string' && value.length > 30) {
+                value = value.substring(0, 30) + '...';
+            }
+            
+            td.textContent = value;
+            row.appendChild(td);
         });
         
-        survivalByFeature[feature] = {
-            labels: values.map(String),
-            rates: survivalRates.map(parseFloat),
-            counts: values.map(value => cleanedData.filter(row => row[feature] === value).length)
-        };
-    });
+        tbody.appendChild(row);
+    }
     
-    // Survival by age groups
-    const ageGroups = ['0-12', '13-25', '26-40', '41-60', '60+'];
-    const ageGroupRates = [];
-    
-    ageGroups.forEach(group => {
-        let minAge, maxAge;
-        if (group === '0-12') {
-            minAge = 0; maxAge = 12;
-        } else if (group === '13-25') {
-            minAge = 13; maxAge = 25;
-        } else if (group === '26-40') {
-            minAge = 26; maxAge = 40;
-        } else if (group === '41-60') {
-            minAge = 41; maxAge = 60;
-        } else {
-            minAge = 61; maxAge = 200;
-        }
-        
-        const groupData = cleanedData.filter(row => row.Age >= minAge && row.Age <= maxAge);
-        const survived = groupData.filter(row => row.Survived === 1);
-        const rate = groupData.length > 0 ? (survived.length / groupData.length) * 100 : 0;
-        ageGroupRates.push(rate.toFixed(1));
-    });
-    
-    survivalByFeature['AgeGroup'] = {
-        labels: ageGroups,
-        rates: ageGroupRates.map(parseFloat)
-    };
-    
-    // Correlation matrix
-    const numericColumns = ['Survived', 'Pclass', 'Age', 'SibSp', 'Parch', 'Fare'];
-    const correlationMatrix = calculateCorrelationMatrix(numericColumns);
-    
-    analysisResults.bivariate = {
-        survivalByFeature: survivalByFeature,
-        correlationMatrix: correlationMatrix,
-        numericColumns: numericColumns
-    };
+    domElements.previewTable.appendChild(tbody);
 }
 
 /**
- * Detect outliers using the IQR method
+ * Analyze data types and missing values
  */
-function detectOutliers() {
-    if (cleanedData.length === 0) return;
+function analyzeDataTypesAndMissingValues() {
+    if (!titanicData || titanicData.length === 0) {
+        return;
+    }
     
-    const numericColumns = ['Age', 'Fare'];
-    const outlierResults = {};
-    
-    numericColumns.forEach(column => {
-        const values = cleanedData.map(row => row[column]).filter(val => val != null);
-        
-        // Calculate quartiles
-        const sorted = [...values].sort((a, b) => a - b);
-        const q1 = sorted[Math.floor(sorted.length * 0.25)];
-        const q3 = sorted[Math.floor(sorted.length * 0.75)];
-        const iqr = q3 - q1;
-        
-        // Define outlier boundaries
-        const lowerBound = q1 - 1.5 * iqr;
-        const upperBound = q3 + 1.5 * iqr;
-        
-        // Count outliers
-        const outliers = values.filter(val => val < lowerBound || val > upperBound);
-        const outlierPercent = (outliers.length / values.length) * 100;
-        
-        outlierResults[column] = {
-            total: values.length,
-            outliers: outliers.length,
-            percent: outlierPercent.toFixed(2),
-            lowerBound: lowerBound.toFixed(2),
-            upperBound: upperBound.toFixed(2),
-            q1: q1.toFixed(2),
-            q3: q3.toFixed(2),
-            iqr: iqr.toFixed(2)
-        };
-    });
-    
-    analysisResults.outliers = outlierResults;
-}
-
-/**
- * Generate insights and identify the most important factor for survival
- */
-function generateInsights() {
-    if (cleanedData.length === 0) return;
-    
-    const insights = [];
-    
-    // Insight 1: Overall survival rate
-    const totalPassengers = cleanedData.length;
-    const survivedCount = cleanedData.filter(row => row.Survived === 1).length;
-    const survivalRate = ((survivedCount / totalPassengers) * 100).toFixed(1);
-    insights.push(`Overall survival rate was ${survivalRate}% (${survivedCount} of ${totalPassengers} passengers)`);
-    
-    // Insight 2: Survival by gender
-    const femalePassengers = cleanedData.filter(row => row.Sex === 'female');
-    const malePassengers = cleanedData.filter(row => row.Sex === 'male');
-    const femaleSurvivalRate = femalePassengers.length > 0 ? 
-        ((femalePassengers.filter(row => row.Survived === 1).length / femalePassengers.length) * 100).toFixed(1) : 0;
-    const maleSurvivalRate = malePassengers.length > 0 ? 
-        ((malePassengers.filter(row => row.Survived === 1).length / malePassengers.length) * 100).toFixed(1) : 0;
-    insights.push(`Female passengers had a ${femaleSurvivalRate}% survival rate, compared to ${maleSurvivalRate}% for male passengers`);
-    
-    // Insight 3: Survival by class
-    const classSurvival = {};
-    [1, 2, 3].forEach(pclass => {
-        const classPassengers = cleanedData.filter(row => row.Pclass === pclass);
-        const classSurvived = classPassengers.filter(row => row.Survived === 1).length;
-        classSurvival[pclass] = (classSurvived / classPassengers.length * 100).toFixed(1);
-    });
-    insights.push(`First-class passengers had the highest survival rate at ${classSurvival[1]}%, followed by second class (${classSurvival[2]}%) and third class (${classSurvival[3]}%)`);
-    
-    // Insight 4: Age and survival
-    const children = cleanedData.filter(row => row.Age < 18);
-    const adults = cleanedData.filter(row => row.Age >= 18);
-    const childSurvivalRate = children.length > 0 ? 
-        ((children.filter(row => row.Survived === 1).length / children.length) * 100).toFixed(1) : 0;
-    const adultSurvivalRate = adults.length > 0 ? 
-        ((adults.filter(row => row.Survived === 1).length / adults.length) * 100).toFixed(1) : 0;
-    insights.push(`Children (under 18) had a ${childSurvivalRate}% survival rate, while adults had ${adultSurvivalRate}%`);
-    
-    // Insight 5: Family size and survival
-    cleanedData.forEach(row => {
-        row.FamilySize = row.SibSp + row.Parch + 1;
-    });
-    
-    const soloPassengers = cleanedData.filter(row => row.FamilySize === 1);
-    const familyPassengers = cleanedData.filter(row => row.FamilySize > 1);
-    const soloSurvivalRate = soloPassengers.length > 0 ? 
-        ((soloPassengers.filter(row => row.Survived === 1).length / soloPassengers.length) * 100).toFixed(1) : 0;
-    const familySurvivalRate = familyPassengers.length > 0 ? 
-        ((familyPassengers.filter(row => row.Survived === 1).length / familyPassengers.length) * 100
+    const columns = Object.keys(titanicData[0]);
+    const totalRows = titanicData.length;
+    let missingValues
