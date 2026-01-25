@@ -22,11 +22,8 @@ In 'app.js':
 - Missing Data & Cleaning: Render a horizontal bar chart (Chart.js) showing the % of missing values per column. Provide a summary statement.
 - Distributions: Create: a) Histograms for 'Age', 'Fare', 'SibSp', 'Parch'; b) Bar charts for 'Sex', 'Pclass', 'Embarked', 'Survived'.
 - Outlier Detection: For key numerical columns ('Age', 'Fare') identify outliers. Present counts and visualize 'Fare' outliers using a box plot chart.
-- Correlations: Calculate a correlation matrix for numerical fields ('Age', 'Fare', 'Pclass', 'SibSp', 'Parch'). Render a visually clear correlation heatmap using a Chart.js bar chart with a color gradient.
+- Correlations: Visualize correlation for numerical fields ('Age', 'Fare', 'Pclass', 'SibSp', 'Parch'). Render a visually clear correlation heatmap using a Chart.js bar chart with a color gradient.
 - Survival Factor Analysis: Systematically analyze and visualize survival rates by 'Sex', 'Pclass', and 'Age' group. Calculate and compare metrics (e.g., survival percentage differentials) to programmatically identify and state the most important survival factor in a dedicated conclusion card.
 - Interactivity: Make the dashboard intuitive and guide the user. All the buttons should be clickable. Users should be able to upload a CSV file into the app and press “Run EDA” button to start the EDA pipeline. 
 
 The dashboard color palette should be in muted blue tones. I am going to deploy this app on GitHub Pages: “nndl” repository, “week1” directory. Add clear code comments in English.
-
-**Extra Prompt**
-After I deployed this on github pages Fare Outliers Box Plot and the data in sections 5. Correlation & Pattern Analysis, 6. Survival Factor Investigation, 7. Key Insights & Conclusion is not displayed. It seems there is something wrong with js file.
