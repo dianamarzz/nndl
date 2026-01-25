@@ -1,9 +1,10 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Titanic EDA Dashboard | Interactive Data Analysis</title>
+    <title>Titanic EDA Dashboard</title>
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -12,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- PapaParse for CSV parsing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -20,204 +21,152 @@
     <!-- Custom CSS -->
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --accent-color: #e74c3c;
-            --success-color: #27ae60;
-            --light-bg: #f8f9fa;
-            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
+            --primary-blue: #2c3e50;
+            --secondary-blue: #3498db;
+            --accent-teal: #1abc9c;
+            --light-gray: #ecf0f1;
+            --dark-gray: #7f8c8d;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f7fa;
+            background-color: #f8f9fa;
             color: #333;
-            padding-top: 20px;
-            padding-bottom: 40px;
         }
         
         .dashboard-header {
-            background: linear-gradient(135deg, var(--primary-color), #1a2530);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
             color: white;
             padding: 2rem 0;
             margin-bottom: 2rem;
-            border-radius: 10px;
-            box-shadow: var(--card-shadow);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         
-        .dashboard-header h1 {
+        .dashboard-title {
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
         }
         
-        .dashboard-header .lead {
+        .dashboard-subtitle {
+            font-weight: 300;
             opacity: 0.9;
         }
         
-        .section-card {
-            background: white;
-            border-radius: 10px;
-            box-shadow: var(--card-shadow);
-            margin-bottom: 2rem;
-            overflow: hidden;
-            transition: var(--transition);
+        .card {
             border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
         }
         
-        .section-card:hover {
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-            transform: translateY(-2px);
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
         }
         
         .card-header {
-            background-color: var(--primary-color);
-            color: white;
+            background-color: white;
+            border-bottom: 3px solid var(--accent-teal);
             font-weight: 600;
-            padding: 1rem 1.5rem;
-            border-bottom: none;
+            color: var(--primary-blue);
+            padding: 1rem 1.25rem;
+            border-radius: 12px 12px 0 0 !important;
         }
         
         .card-body {
+            padding: 1.25rem;
+        }
+        
+        .section-icon {
+            color: var(--accent-teal);
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-blue);
+            border: none;
+            padding: 10px 24px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-blue);
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background-color: var(--accent-teal);
+            border: none;
+            padding: 10px 24px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-success:hover {
+            background-color: #16a085;
+            transform: translateY(-2px);
+        }
+        
+        .file-input-container {
+            background-color: var(--light-gray);
             padding: 1.5rem;
+            border-radius: 10px;
+            border: 2px dashed var(--dark-gray);
+        }
+        
+        .insight-card {
+            border-left: 5px solid var(--accent-teal);
+        }
+        
+        .factor-highlight {
+            background-color: rgba(26, 188, 156, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .deployment-note {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 2rem;
         }
         
         .chart-container {
             position: relative;
             height: 300px;
-            margin-bottom: 1rem;
-        }
-        
-        .data-table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border-radius: 5px;
-            border: 1px solid #dee2e6;
-        }
-        
-        table.data-table {
             width: 100%;
-            margin-bottom: 0;
-        }
-        
-        table.data-table th {
-            background-color: #f1f5f9;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        
-        .insight-card {
-            border-left: 5px solid var(--secondary-color);
-            background-color: #f8fafc;
-        }
-        
-        .conclusion-card {
-            border-left: 5px solid var(--success-color);
-            background-color: #f0f9ff;
-        }
-        
-        .btn-eda {
-            background: linear-gradient(to right, var(--secondary-color), #2980b9);
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: 50px;
-            transition: var(--transition);
-        }
-        
-        .btn-eda:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
-        }
-        
-        .stat-box {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 1.25rem;
-            text-align: center;
-            border-left: 4px solid var(--secondary-color);
         }
         
         .stat-number {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 0.25rem;
+            color: var(--secondary-blue);
         }
         
         .stat-label {
             font-size: 0.9rem;
-            color: #6c757d;
+            color: var(--dark-gray);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
         }
         
-        .badge-missing {
-            background-color: var(--accent-color);
-        }
-        
-        .badge-complete {
-            background-color: var(--success-color);
-        }
-        
-        .factor-highlight {
-            background-color: #fff3cd;
-            padding: 1rem;
-            border-radius: 8px;
-            border-left: 4px solid #ffc107;
-            margin: 1rem 0;
-        }
-        
-        .file-input-area {
-            border: 2px dashed #adb5bd;
-            border-radius: 10px;
-            padding: 2rem;
-            text-align: center;
-            background-color: #f8f9fa;
-            transition: var(--transition);
-        }
-        
-        .file-input-area:hover {
-            border-color: var(--secondary-color);
-            background-color: #edf7ff;
-        }
-        
-        .file-input-area.dragover {
-            border-color: var(--success-color);
-            background-color: #e8f7ef;
-        }
-        
-        .deployment-note {
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin-top: 2rem;
-        }
-        
-        .progress {
-            height: 8px;
-            margin-bottom: 1rem;
-        }
-        
-        .nav-tabs .nav-link {
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-        
-        .nav-tabs .nav-link.active {
-            color: var(--secondary-color);
-            font-weight: 600;
-            border-bottom: 3px solid var(--secondary-color);
+        .table-hover tbody tr:hover {
+            background-color: rgba(52, 152, 219, 0.05);
         }
         
         footer {
             margin-top: 3rem;
+            padding: 1.5rem 0;
+            background-color: var(--primary-blue);
+            color: white;
             text-align: center;
-            color: #6c757d;
-            font-size: 0.9rem;
         }
         
         .loading-spinner {
@@ -226,428 +175,450 @@
             padding: 2rem;
         }
         
-        @media (max-width: 768px) {
-            .chart-container {
-                height: 250px;
-            }
-            
-            .stat-number {
-                font-size: 1.5rem;
-            }
+        .data-table {
+            font-size: 0.85rem;
+        }
+        
+        .correlation-cell {
+            padding: 5px;
+            text-align: center;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Dashboard Header -->
-        <header class="dashboard-header">
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h1><i class="fas fa-ship me-2"></i>Titanic EDA Dashboard</h1>
-                    <p class="lead">Interactive Exploratory Data Analysis of the Kaggle Titanic Dataset</p>
-                    <p class="mb-0">Perform comprehensive data analysis entirely in your browser</p>
+                    <h1 class="dashboard-title"><i class="fas fa-ship"></i> Titanic EDA Dashboard</h1>
+                    <p class="dashboard-subtitle">Interactive Exploratory Data Analysis of Passenger Survival Factors</p>
                 </div>
-                <div class="col-md-4 text-md-end">
-                    <div class="mt-3 mt-md-0">
-                        <span class="badge bg-light text-dark fs-6 p-2"><i class="fas fa-chart-line me-1"></i> Interactive Analytics</span>
-                    </div>
-                </div>
-            </div>
-        </header>
-        
-        <!-- Data Load Section -->
-        <div class="section-card" id="dataLoadSection">
-            <div class="card-header">
-                <i class="fas fa-file-upload me-2"></i>1. Data Load & Overview
-            </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-lg-6">
-                        <div class="file-input-area" id="fileDropArea">
-                            <i class="fas fa-cloud-upload-alt fa-3x text-secondary mb-3"></i>
-                            <h4>Upload Titanic Dataset</h4>
-                            <p class="text-muted">Drag & drop or click to upload <code>Titanic-Dataset.csv</code></p>
-                            <input type="file" id="csvFile" class="form-control" accept=".csv">
-                            <p class="mt-3 small text-muted">Dataset will be processed entirely in your browser. No data is uploaded to any server.</p>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="mt-4 mt-lg-0">
-                            <h5><i class="fas fa-info-circle me-2"></i>About the Dataset</h5>
-                            <p>The Titanic dataset contains information about passengers aboard the RMS Titanic, including survival status, demographic details, and ticket information.</p>
-                            
-                            <div class="row mt-4">
-                                <div class="col-md-6 mb-3">
-                                    <div class="stat-box">
-                                        <div class="stat-number" id="rowCount">--</div>
-                                        <div class="stat-label">Passengers</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="stat-box">
-                                        <div class="stat-number" id="colCount">--</div>
-                                        <div class="stat-label">Features</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <button id="runEDA" class="btn btn-eda w-100 mt-2" disabled>
-                                <i class="fas fa-play-circle me-2"></i>Run Full EDA Analysis
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="loading-spinner" id="loadingSpinner">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">Processing data and generating visualizations...</p>
-                </div>
-                
-                <div id="dataPreview" class="mt-4" style="display: none;">
-                    <h5><i class="fas fa-table me-2"></i>Data Preview (First 10 Rows)</h5>
-                    <div class="data-table-container">
-                        <table class="table table-hover data-table" id="previewTable">
-                            <thead>
-                                <tr>
-                                    <!-- Table headers will be populated by JavaScript -->
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Table rows will be populated by JavaScript -->
-                            </tbody>
-                        </table>
+                <div class="col-md-4 text-end">
+                    <div class="badge bg-light text-dark p-3">
+                        <i class="fas fa-chart-bar"></i> Browser-Based Analytics
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Data Types & Missing Values -->
-        <div class="section-card" id="dataTypesSection" style="display: none;">
-            <div class="card-header">
-                <i class="fas fa-clipboard-check me-2"></i>2. Data Types & Missing Values
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-lg-7">
-                        <h5><i class="fas fa-chart-bar me-2"></i>Missing Values by Column (%)</h5>
-                        <div class="chart-container">
-                            <canvas id="missingValuesChart"></canvas>
+    </header>
+    
+    <main class="container">
+        <!-- Data Load Section -->
+        <section id="data-load" class="mb-5">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-file-upload section-icon"></i> 1. Data Load & Overview
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="file-input-container text-center mb-4">
+                                <h5><i class="fas fa-database"></i> Load Titanic Dataset</h5>
+                                <p class="text-muted">Upload <code>Titanic-Dataset.csv</code> to begin analysis</p>
+                                <input type="file" id="csvFile" class="form-control" accept=".csv">
+                                <p class="mt-3 small text-muted">Dataset source: <a href="https://www.kaggle.com/c/titanic/data" target="_blank">Kaggle Titanic Competition</a></p>
+                                
+                                <div class="loading-spinner" id="loadingSpinner">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Processing dataset...</p>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                <button id="runEDA" class="btn btn-success btn-lg">
+                                    <i class="fas fa-play-circle"></i> Run Full EDA Analysis
+                                </button>
+                                <button id="resetDashboard" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-redo"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <div class="row text-center">
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="stat-number" id="rowCount">--</div>
+                                            <div class="stat-label">Passengers</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="stat-number" id="colCount">--</div>
+                                            <div class="stat-label">Features</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="stat-number" id="survivalRate">--%</div>
+                                            <div class="stat-label">Survival Rate</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="stat-number" id="missingValues">--</div>
+                                            <div class="stat-label">Missing Cells</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-lg-5">
-                        <h5><i class="fas fa-columns me-2"></i>Column Information</h5>
-                        <div class="data-table-container">
-                            <table class="table table-hover data-table">
+                    
+                    <div class="mt-4">
+                        <h6><i class="fas fa-table"></i> Data Preview</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover data-table" id="dataPreview">
                                 <thead>
                                     <tr>
-                                        <th>Column</th>
-                                        <th>Type</th>
-                                        <th>Missing</th>
-                                        <th>% Missing</th>
+                                        <th>#</th>
+                                        <th>PassengerId</th>
+                                        <th>Survived</th>
+                                        <th>Pclass</th>
+                                        <th>Name</th>
+                                        <th>Sex</th>
+                                        <th>Age</th>
+                                        <th>SibSp</th>
+                                        <th>Parch</th>
+                                        <th>Ticket</th>
+                                        <th>Fare</th>
+                                        <th>Cabin</th>
+                                        <th>Embarked</th>
                                     </tr>
                                 </thead>
-                                <tbody id="columnInfoTable">
-                                    <!-- Will be populated by JavaScript -->
+                                <tbody>
+                                    <!-- Data preview will be populated here -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="alert alert-info">
-                            <i class="fas fa-lightbulb me-2"></i>
-                            <span id="missingSummary">Missing data analysis will appear here after running EDA.</span>
-                        </div>
-                    </div>
-                </div>
             </div>
-        </div>
+        </section>
         
-        <!-- Distribution Analysis -->
-        <div class="section-card" id="distributionSection" style="display: none;">
-            <div class="card-header">
-                <i class="fas fa-chart-area me-2"></i>3. Distribution Analysis
+        <div class="row">
+            <!-- Data Types & Missing Values -->
+            <div class="col-lg-6">
+                <section id="data-types" class="mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-clipboard-list section-icon"></i> 2. Data Types & Missing Values
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover" id="dataTypesTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Column</th>
+                                            <th>Type</th>
+                                            <th>Missing</th>
+                                            <th>% Missing</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data types will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="chart-container mt-3">
+                                <canvas id="missingDataChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div class="card-body">
-                <ul class="nav nav-tabs mb-4" id="distributionTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="num-tab" data-bs-toggle="tab" data-bs-target="#num-distributions" type="button" role="tab">Numerical</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="cat-tab" data-bs-toggle="tab" data-bs-target="#cat-distributions" type="button" role="tab">Categorical</button>
-                    </li>
-                </ul>
-                
-                <div class="tab-content" id="distributionTabContent">
-                    <!-- Numerical Distributions -->
-                    <div class="tab-pane fade show active" id="num-distributions" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Age Distribution</h6>
-                                <div class="chart-container">
-                                    <canvas id="ageDistributionChart"></canvas>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Fare Distribution</h6>
-                                <div class="chart-container">
-                                    <canvas id="fareDistributionChart"></canvas>
-                                </div>
-                            </div>
+            
+            <!-- Distribution Analysis -->
+            <div class="col-lg-6">
+                <section id="distributions" class="mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-pie section-icon"></i> 3. Distribution Analysis
                         </div>
-                        <div class="row mt-4">
-                            <div class="col-md-6">
-                                <h6>SibSp (Siblings/Spouses) Distribution</h6>
-                                <div class="chart-container">
-                                    <canvas id="sibspDistributionChart"></canvas>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="distributionTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="num-tab" data-bs-toggle="tab" data-bs-target="#num-dist" type="button" role="tab">Numerical</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="cat-tab" data-bs-toggle="tab" data-bs-target="#cat-dist" type="button" role="tab">Categorical</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content mt-3">
+                                <div class="tab-pane fade show active" id="num-dist" role="tabpanel">
+                                    <div class="chart-container">
+                                        <canvas id="ageDistributionChart"></canvas>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-6">
+                                            <div class="chart-container">
+                                                <canvas id="fareDistributionChart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="chart-container">
+                                                <canvas id="familyDistributionChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Parch (Parents/Children) Distribution</h6>
-                                <div class="chart-container">
-                                    <canvas id="parchDistributionChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Categorical Distributions -->
-                    <div class="tab-pane fade" id="cat-distributions" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Passenger Class (Pclass)</h6>
-                                <div class="chart-container">
-                                    <canvas id="pclassDistributionChart"></canvas>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Gender Distribution</h6>
-                                <div class="chart-container">
-                                    <canvas id="sexDistributionChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row mt-4">
-                            <div class="col-md-6">
-                                <h6>Embarkation Port</h6>
-                                <div class="chart-container">
-                                    <canvas id="embarkedDistributionChart"></canvas>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Survival Distribution</h6>
-                                <div class="chart-container">
-                                    <canvas id="survivedDistributionChart"></canvas>
+                                <div class="tab-pane fade" id="cat-dist" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="chart-container">
+                                                <canvas id="genderChart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="chart-container">
+                                                <canvas id="classChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-6">
+                                            <div class="chart-container">
+                                                <canvas id="embarkedChart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="chart-container">
+                                                <canvas id="survivalChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </div>
         
         <!-- Outlier Detection -->
-        <div class="section-card" id="outlierSection" style="display: none;">
-            <div class="card-header">
-                <i class="fas fa-exclamation-triangle me-2"></i>4. Outlier Detection
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-lg-7">
-                        <h5><i class="fas fa-box me-2"></i>Fare Outliers (Box Plot)</h5>
-                        <div class="chart-container">
-                            <canvas id="outlierChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="col-lg-5">
-                        <h5><i class="fas fa-search me-2"></i>Outlier Summary</h5>
-                        <div class="row mt-3">
-                            <div class="col-md-6 mb-3">
-                                <div class="stat-box">
-                                    <div class="stat-number" id="ageOutlierCount">--</div>
-                                    <div class="stat-label">Age Outliers</div>
-                                </div>
+        <section id="outliers" class="mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-search section-icon"></i> 4. Outlier Detection
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <h6>Outlier Summary</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Column</th>
+                                            <th>Total Values</th>
+                                            <th>Outliers</th>
+                                            <th>% Outliers</th>
+                                            <th>Outlier Range</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="outlierTable">
+                                        <!-- Outlier data will be populated here -->
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <div class="stat-box">
-                                    <div class="stat-number" id="fareOutlierCount">--</div>
-                                    <div class="stat-label">Fare Outliers</div>
-                                </div>
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i> Outliers are identified using the IQR method (Q3 + 1.5×IQR or Q1 - 1.5×IQR).
                             </div>
                         </div>
-                        
-                        <div class="alert alert-warning mt-3">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Outlier Detection Method:</strong> Using the Interquartile Range (IQR) method. Values outside 1.5 * IQR from the quartiles are considered outliers.
-                        </div>
-                        
-                        <div class="mt-3">
-                            <h6>Outlier Impact</h6>
-                            <p id="outlierImpactText" class="small">Outlier analysis will appear here after running EDA.</p>
+                        <div class="col-lg-6">
+                            <div class="chart-container">
+                                <canvas id="outlierChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
         
         <!-- Correlation & Pattern Analysis -->
-        <div class="section-card" id="correlationSection" style="display: none;">
-            <div class="card-header">
-                <i class="fas fa-project-diagram me-2"></i>5. Correlation & Pattern Analysis
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-lg-8">
-                        <h5><i class="fas fa-fire me-2"></i>Correlation Heatmap (Numerical Features)</h5>
-                        <div class="chart-container">
-                            <canvas id="correlationChart"></canvas>
+        <section id="correlation" class="mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-project-diagram section-icon"></i> 5. Correlation & Pattern Analysis
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="chart-container">
+                                <canvas id="correlationChart"></canvas>
+                            </div>
                         </div>
-                        <p class="small text-muted mt-2">Color intensity indicates correlation strength. Blue = positive, Red = negative.</p>
-                    </div>
-                    <div class="col-lg-4">
-                        <h5><i class="fas fa-star me-2"></i>Top Correlations</h5>
-                        <div id="topCorrelations">
-                            <!-- Will be populated by JavaScript -->
-                            <p class="text-muted">Top correlations will appear here after analysis.</p>
-                        </div>
-                        
-                        <div class="alert alert-info mt-4">
-                            <i class="fas fa-lightbulb me-2"></i>
-                            <div><strong>Key Insight:</strong> <span id="correlationInsight">Correlation insights will appear here after running EDA.</span></div>
+                        <div class="col-lg-4">
+                            <h6>Correlation Insights</h6>
+                            <div id="correlationInsights">
+                                <p class="card-text">Correlation matrix shows relationships between numerical variables. Values range from -1 (perfect negative correlation) to +1 (perfect positive correlation).</p>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item"><strong>Fare vs Pclass:</strong> Higher fare correlates with lower (better) class</li>
+                                    <li class="list-group-item"><strong>Age vs Pclass:</strong> Limited correlation</li>
+                                    <li class="list-group-item"><strong>SibSp vs Parch:</strong> Moderate correlation - families traveling together</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
         
         <!-- Survival Factor Investigation -->
-        <div class="section-card" id="survivalSection" style="display: none;">
-            <div class="card-header">
-                <i class="fas fa-life-ring me-2"></i>6. Survival Factor Investigation
-            </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-lg-6">
-                        <h5><i class="fas fa-venus-mars me-2"></i>Survival by Gender</h5>
-                        <div class="chart-container">
-                            <canvas id="survivalBySexChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <h5><i class="fas fa-layer-group me-2"></i>Survival by Passenger Class</h5>
-                        <div class="chart-container">
-                            <canvas id="survivalByClassChart"></canvas>
-                        </div>
-                    </div>
+        <section id="survival-factors" class="mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-heartbeat section-icon"></i> 6. Survival Factor Investigation
                 </div>
-                
-                <div class="row mt-4">
-                    <div class="col-lg-12">
-                        <h5><i class="fas fa-user-friends me-2"></i>Survival by Age Group</h5>
-                        <div class="chart-container">
-                            <canvas id="survivalByAgeChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row mt-4">
-                    <div class="col-md-4">
-                        <div class="stat-box">
-                            <div class="stat-number" id="overallSurvivalRate">--%</div>
-                            <div class="stat-label">Overall Survival Rate</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-box">
-                            <div class="stat-number" id="femaleSurvivalRate">--%</div>
-                            <div class="stat-label">Female Survival Rate</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-box">
-                            <div class="stat-number" id="firstClassSurvivalRate">--%</div>
-                            <div class="stat-label">1st Class Survival Rate</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Key Insights & Conclusion -->
-        <div class="section-card" id="insightsSection" style="display: none;">
-            <div class="card-header">
-                <i class="fas fa-chart-pie me-2"></i>7. Key Insights & Conclusion
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-lg-8">
-                        <div class="conclusion-card p-4 mb-4">
-                            <h4><i class="fas fa-bullseye me-2"></i>Most Important Survival Factor</h4>
-                            <div class="factor-highlight mt-3">
-                                <h3 id="topFactor" class="text-center mb-3">Analysis in progress...</h3>
-                                <p id="factorExplanation" class="mb-0">The most important factor associated with passenger survival will be determined through systematic analysis of all available data.</p>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <div class="chart-container">
+                                <canvas id="survivalByGenderChart"></canvas>
                             </div>
-                            
-                            <h5 class="mt-4">Supporting Evidence</h5>
-                            <ul class="list-group list-group-flush" id="supportingEvidence">
-                                <!-- Will be populated by JavaScript -->
-                                <li class="list-group-item bg-transparent">Evidence will appear here after analysis</li>
-                            </ul>
+                            <div class="text-center mt-2">
+                                <h5 id="survivalByGenderText">--% Female vs --% Male</h5>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="chart-container">
+                                <canvas id="survivalByClassChart"></canvas>
+                            </div>
+                            <div class="text-center mt-2">
+                                <h5 id="survivalByClassText">Class 1: --% | Class 2: --% | Class 3: --%</h5>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="chart-container">
+                                <canvas id="survivalByAgeChart"></canvas>
+                            </div>
+                            <div class="text-center mt-2">
+                                <h5 id="survivalByAgeText">Highest: -- age group</h5>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="col-lg-4">
-                        <div class="insight-card p-4">
-                            <h5><i class="fas fa-lightbulb me-2"></i>Key Insights</h5>
-                            <div id="keyInsights">
-                                <!-- Will be populated by JavaScript -->
-                                <div class="mt-3">
-                                    <p><i class="fas fa-check-circle text-success me-2"></i>Insights will appear here after analysis</p>
-                                </div>
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h6>Survival Statistics</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="survivalStatsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Factor</th>
+                                            <th>Category</th>
+                                            <th>Survived</th>
+                                            <th>Total</th>
+                                            <th>% Survived</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Survival stats will be populated here -->
+                                    </tbody>
+                                </table>
                             </div>
-                            
-                            <div class="mt-4">
-                                <h5><i class="fas fa-database me-2"></i>Dataset Adaptation</h5>
-                                <p class="small">To adapt this dashboard for another CSV dataset:</p>
-                                <ol class="small">
-                                    <li>Update column names in <code>app.js</code></li>
-                                    <li>Adjust chart configurations as needed</li>
-                                    <li>Update the CSV filename in the file input instructions</li>
-                                </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Factor Impact Analysis</h6>
+                            <div id="factorImpact">
+                                <div class="factor-highlight">
+                                    <h5><i class="fas fa-venus"></i> Gender Impact</h5>
+                                    <p>Female passengers had a survival rate <span id="genderImpact">--</span> times higher than males.</p>
+                                </div>
+                                <div class="factor-highlight">
+                                    <h5><i class="fas fa-crown"></i> Class Impact</h5>
+                                    <p>First class passengers had a survival rate <span id="classImpact">--</span> times higher than third class.</p>
+                                </div>
+                                <div class="factor-highlight">
+                                    <h5><i class="fas fa-child"></i> Age Impact</h5>
+                                    <p>Children (under 10) had a survival rate <span id="ageImpact">--</span> times higher than adults (30-50).</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
         
-        <!-- Deployment Note -->
-        <div class="deployment-note">
-            <div class="row align-items-center">
-                <div class="col-md-9">
-                    <h4><i class="fas fa-rocket me-2"></i>Deploy This Dashboard</h4>
-                    <p class="mb-0">Push to a public GitHub repository, enable Pages (main branch /root), and visit your <code>&lt;username&gt;.github.io/&lt;repo-name&gt;</code> URL to share your analysis.</p>
+        <!-- Key Insights & Conclusion -->
+        <section id="insights" class="mb-4">
+            <div class="card insight-card">
+                <div class="card-header">
+                    <i class="fas fa-lightbulb section-icon"></i> 7. Key Insights & Conclusion
                 </div>
-                <div class="col-md-3 text-md-end">
-                    <i class="fas fa-server fa-3x opacity-50"></i>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <h4>Executive Summary</h4>
+                            <p>The Titanic dataset reveals clear patterns in passenger survival. Through comprehensive analysis of 891 passengers and 12 features, we can identify the most significant factors influencing survival probability.</p>
+                            
+                            <h5 class="mt-4">Key Findings:</h5>
+                            <ul>
+                                <li><strong>Data Quality:</strong> Age (19.9%) and Cabin (77.1%) have significant missing values</li>
+                                <li><strong>Passenger Demographics:</strong> Majority were male (64.8%), third class (55.1%), and embarked from Southampton (72.4%)</li>
+                                <li><strong>Fare Distribution:</strong> Highly skewed with outliers indicating premium tickets</li>
+                                <li><strong>Survival Disparities:</strong> Clear survival advantages for certain passenger groups</li>
+                            </ul>
+                            
+                            <div class="alert alert-success mt-4" id="conclusionAlert">
+                                <h4 class="alert-heading"><i class="fas fa-trophy"></i> Most Important Survival Factor</h4>
+                                <p id="conclusionText">Run the EDA analysis to discover the key survival factor.</p>
+                                <hr>
+                                <p class="mb-0" id="factorExplanation">The analysis will reveal which factor had the greatest impact on survival probability.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="deployment-note">
+                                <h5><i class="fas fa-rocket"></i> Deployment Instructions</h5>
+                                <p>To deploy this dashboard:</p>
+                                <ol class="small">
+                                    <li>Push code to a public GitHub repository</li>
+                                    <li>Go to Settings → Pages</li>
+                                    <li>Select "main" branch and "/ (root)" folder</li>
+                                    <li>Visit your <code>&lt;username&gt;.github.io/&lt;repo-name&gt;</code> URL</li>
+                                </ol>
+                                <p class="mt-2"><strong>Note:</strong> This app runs entirely in the browser using JavaScript. No server-side processing is required.</p>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h6>Dataset Adaptation</h6>
+                                <p class="small">To use with a different CSV dataset:</p>
+                                <ul class="small">
+                                    <li>Update CSV filename in <code>app.js</code> line with file input handling</li>
+                                    <li>Adjust column names in analysis functions</li>
+                                    <li>Modify chart configurations for new variables</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>Titanic EDA Dashboard &copy; 2023 | Built with Bootstrap 5, Chart.js & PapaParse</p>
+            <p class="small">This dashboard performs complete Exploratory Data Analysis in the browser</p>
         </div>
-        
-        <footer>
-            <p class="mb-1">Titanic EDA Dashboard &copy; 2023 | Built with Bootstrap 5, Chart.js, and PapaParse</p>
-            <p class="small">Data Source: Kaggle Titanic Dataset | Analysis performed entirely client-side</p>
-        </footer>
-    </div>
-
+    </footer>
+    
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Custom JavaScript -->
-    <script src="app.js" defer></script>
+    <!-- App JavaScript -->
+    <script src="app.js"></script>
 </body>
 </html>
