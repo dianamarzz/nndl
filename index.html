@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titanic EDA Explorer | Survival Analysis</title>
+    
+    <!-- External Libraries -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        /* CSS Variables for Nautical Theme */
+        :root {
+            --color-ocean-dark: #0a2463;
+            --color-ocean-medium: #1d4e89;
+            --color-ocean-light: #3e7cb1;
+            --color-teal: #4a9c8f;
+            --color-gold: #f4b942;
+            --color-sand: #f6f4d2;
+            --color-white: #ffffff;
+            --color-gray-light: #f8f9fa;
+            --color-gray-medium: #e9ecef;
+            --color-gray-dark: #6c757d;
+            --shadow-card: 0 4px 12px rgba(10, 36, 99, 0.1);
+            --border-radius: 10px;
+            --transition-speed: 0.3s;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--color-gray-light);
+            color: var(--color-ocean-dark);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header Styles */
+        header {
+            background: linear-gradient(135deg, var(--color-ocean-dark), var(--color-ocean-medium));
+            color: var(--color-white);
+            padding: 2rem 0;
+            border-bottom: 5px solid var(--color-gold);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            margin-bottom: 2rem;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo-icon {
+            font-size: 2.5rem;
+            color: var(--color-gold);
+        }
+        
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        
+        .logo p {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        /* Button Styles */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: var(--color-teal);
+            color: var(--color-white);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--color-ocean-light);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: var(--color-gold);
+            color: var(--color-ocean-dark);
+        }
+        
+        .btn-secondary:hover {
+            background-color: #e0a62e;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        /* Main Layout */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+            margin-bottom: 3rem;
+        }
+        
+        /* Card Styles */
+        .card {
+            background-color: var(--color-white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-card);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all var(--transition-speed);
+            border-top: 4px solid var(--color-teal);
+        }
+        
+        .card:hover {
+            box-shadow: 0 6px 16px rgba(10, 36, 99, 0.15);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 2px solid var(--color-gray-medium);
+        }
+        
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--color-ocean-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title i {
+            color: var(--color-teal);
+        }
+        
+        /* Upload Section */
+        .upload-area {
+            border: 3px dashed var(--color-ocean-light);
+            border-radius: var(--border-radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            background-color: rgba(62, 124, 177, 0.05);
+            cursor: pointer;
+            transition: all var(--transition-speed);
+        }
+        
+        .upload-area:hover {
+            background-color: rgba(62, 124, 177, 0.1);
+            border-color: var(--color-teal);
+        }
+        
+        .upload-icon {
+            font-size: 3.5rem;
+            color: var(--color-ocean-medium);
+            margin-bottom: 1rem;
+        }
+        
+        /* Data Table */
+        .data-table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            border: 1px solid var(--color-gray-medium);
+            border-radius: var(--border-radius);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th {
+            background-color: var(--color-ocean-medium);
+            color: var(--color-white);
+            padding: 12px 15px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        
+        .data-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--color-gray-medium);
+        }
+        
+        .data-table tr:nth-child(even) {
+            background-color: rgba(248, 244, 210, 0.3);
+        }
+        
+        .data-table tr:hover {
+            background-color: rgba(62, 124, 177, 0.1);
+        }
+        
+        /* Summary Grid */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .summary-item {
+            background-color: var(--color-gray-light);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--color-teal);
+        }
+        
+        .summary-item h4 {
+            color: var(--color-ocean-dark);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .summary-item p {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--color-ocean-medium);
+        }
+        
+        /* Visualization Containers */
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+        
+        .select-control {
+            padding: 10px 15px;
+            border: 1px solid var(--color-gray-medium);
+            border-radius: 6px;
+            background-color: var(--color-white);
+            color: var(--color-ocean-dark);
+            font-weight: 500;
+            min-width: 200px;
+        }
+        
+        /* Feature Importance Display */
+        .importance-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .feature-rank {
+            display: flex;
+            align-items: center;
+            background-color: var(--color-gray-light);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid var(--color-teal);
+        }
+        
+        .rank-number {
+            background-color: var(--color-gold);
+            color: var(--color-ocean-dark);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-right: 15px;
+        }
+        
+        .feature-info {
+            flex-grow: 1;
+        }
+        
+        .feature-name {
+            font-weight: 700;
+            color: var(--color-ocean-dark);
+            margin-bottom: 5px;
+        }
+        
+        .feature-bar {
+            height: 12px;
+            background-color: var(--color-gray-medium);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .feature-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-teal), var(--color-ocean-light));
+            border-radius: 6px;
+        }
+        
+        /* Key Finding Highlight */
+        .key-finding {
+            background: linear-gradient(135deg, rgba(244, 185, 66, 0.15), rgba(74, 156, 143, 0.15));
+            border-left: 6px solid var(--color-gold);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+        }
+        
+        .key-finding h3 {
+            color: var(--color-ocean-dark);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Footer */
+        footer {
+            background-color: var(--color-ocean-dark);
+            color: var(--color-white);
+            padding: 2rem 0;
+            margin-top: 3rem;
+            text-align: center;
+            border-top: 5px solid var(--color-gold);
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .select-control {
+                width: 100%;
+            }
+            
+            .card {
+                padding: 1rem;
+            }
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(10, 36, 99, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--color-teal);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Progress Steps */
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 2rem 0;
+            position: relative;
+        }
+        
+        .progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background-color: var(--color-gray-medium);
+            z-index: 1;
+        }
+        
+        .step {
+            background-color: var(--color-white);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--color-gray-dark);
+            border: 4px solid var(--color-gray-medium);
+            position: relative;
+            z-index: 2;
+            transition: all var(--transition-speed);
+        }
+        
+        .step.active {
+            border-color: var(--color-teal);
+            color: var(--color-teal);
+            background-color: var(--color-white);
+        }
+        
+        .step.completed {
+            border-color: var(--color-teal);
+            background-color: var(--color-teal);
+            color: var(--color-white);
+        }
+        
+        .step-label {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 0.9rem;
+            color: var(--color-gray-dark);
+        }
+        
+        .step.active .step-label {
+            color: var(--color-ocean-dark);
+            font-weight: 600;
+        }
+        
+        /* Export Panel */
+        .export-panel {
+            background-color: var(--color-sand);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            border: 2px solid var(--color-gold);
+        }
+        
+        .export-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 1.5rem 0;
+        }
+        
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .export-option input {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🚢</div>
+                    <div>
+                        <h1>Titanic EDA Explorer</h1>
+                        <p>Interactive Exploratory Data Analysis for Passenger Survival</p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="exportBtn" class="btn btn-secondary" disabled>
+                        <span>📊</span> Export Dashboard
+                    </button>
+                    <button id="resetBtn" class="btn btn-primary">
+                        <span>🔄</span> Reset Analysis
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Progress Steps -->
+            <div class="progress-steps">
+                <div class="step completed" id="step1">
+                    <span>1</span>
+                    <div class="step-label">Upload & Summary</div>
+                </div>
+                <div class="step" id="step2">
+                    <span>2</span>
+                    <div class="step-label">Univariate Analysis</div>
+                </div>
+                <div class="step" id="step3">
+                    <span>3</span>
+                    <div class="step-label">Bivariate Analysis</div>
+                </div>
+                <div class="step" id="step4">
+                    <span>4</span>
+                    <div class="step-label">Key Insights</div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container">
+        <!-- Upload Section -->
+        <section id="uploadSection" class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>📁</span> Dataset Upload
+                </h2>
+            </div>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">⬆️</div>
+                <h3>Upload Your Titanic Dataset</h3>
+                <p>Drag and drop a CSV file here, or click to browse</p>
+                <p class="info-text" style="margin-top: 1rem; color: var(--color-gray-dark);">
+                    Expected columns: Pclass, Sex, Age, SibSp, Parch, Fare, Embarked, Cabin, Survived
+                </p>
+                <input type="file" id="fileInput" accept=".csv" style="display: none;">
+            </div>
+            
+            <div id="dataPreview" class="hidden">
+                <h3 style="margin-bottom: 1rem;">Data Preview (First 10 Rows)</h3>
+                <div class="data-table-container">
+                    <table class="data-table" id="previewTable">
+                        <!-- Table will be populated by JavaScript -->
+                    </table>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Data Summary Section -->
+        <section id="summarySection" class="card hidden">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>📊</span> Dataset Summary
+                </h2>
+            </div>
+            <div class="summary-grid" id="summaryStats">
+                <!-- Summary stats will be populated by JavaScript -->
+            </div>
+            
+            <div style="margin-top: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Missing Data Heatmap</h3>
+                <div class="chart-container" id="missingDataChart"></div>
+            </div>
+        </section>
+        
+        <!-- Univariate Analysis Section -->
+        <section id="univariateSection" class="card hidden">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>📈</span> Univariate Analysis
+                </h2>
+            </div>
+            
+            <div class="controls-row">
+                <label for="variableSelect">Select Variable:</label>
+                <select id="variableSelect" class="select-control">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+                
+                <label for="chartTypeSelect">Chart Type:</label>
+                <select id="chartTypeSelect" class="select-control">
+                    <option value="histogram">Histogram</option>
+                    <option value="box">Box Plot</option>
+                    <option value="bar">Bar Chart (Categorical)</option>
+                </select>
+            </div>
+            
+            <div class="chart-container" id="univariateChart"></div>
+            
+            <div class="summary-grid" id="variableStats">
+                <!-- Variable statistics will be populated by JavaScript -->
+            </div>
+        </section>
+        
+        <!-- Bivariate Analysis Section -->
+        <section id="bivariateSection" class="card hidden">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>🔗</span> Bivariate Analysis vs. Survival
+                </h2>
+            </div>
+            
+            <div class="controls-row">
+                <label for="bivariateVariableSelect">Select Variable to Compare with Survival:</label>
+                <select id="bivariateVariableSelect" class="select-control">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+            
+            <div class="chart-container" id="bivariateChart"></div>
+            
+            <div style="margin-top: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Correlation Matrix</h3>
+                <div class="chart-container" id="correlationChart"></div>
+            </div>
+        </section>
+        
+        <!-- Key Insights Section -->
+        <section id="insightsSection" class="card hidden">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>🔍</span> Key Insights & Feature Importance
+                </h2>
+            </div>
+            
+            <div class="key-finding">
+                <h3><span>🏆</span> Key Finding: The Single Most Important Factor for Survival</h3>
+                <p id="keyFindingText">Upload and analyze your dataset to discover the most important survival factor.</p>
+                <div id="keyFindingMetric" style="margin-top: 1rem;"></div>
+            </div>
+            
+            <h3 style="margin-bottom: 1rem;">Feature Importance Ranking</h3>
+            <div class="importance-container" id="featureImportance">
+                <!-- Feature importance will be populated by JavaScript -->
+            </div>
+            
+            <div style="margin-top: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Survival Disparity Visualization</h3>
+                <div class="chart-container" id="survivalDisparityChart"></div>
+            </div>
+        </section>
+        
+        <!-- Export Dashboard Section -->
+        <section id="exportSection" class="card hidden">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>📤</span> Export Dashboard Report
+                </h2>
+            </div>
+            
+            <div class="export-panel">
+                <p>Select the components to include in your exported dashboard report:</p>
+                
+                <div class="export-options">
+                    <div class="export-option">
+                        <input type="checkbox" id="exportSummary" checked>
+                        <label for="exportSummary">Dataset Summary</label>
+                    </div>
+                    <div class="export-option">
+                        <input type="checkbox" id="exportUnivariate" checked>
+                        <label for="exportUnivariate">Univariate Analysis</label>
+                    </div>
+                    <div class="export-option">
+                        <input type="checkbox" id="exportBivariate" checked>
+                        <label for="exportBivariate">Bivariate Analysis</label>
+                    </div>
+                    <div class="export-option">
+                        <input type="checkbox" id="exportCorrelation" checked>
+                        <label for="exportCorrelation">Correlation Matrix</label>
+                    </div>
+                    <div class="export-option">
+                        <input type="checkbox" id="exportInsights" checked>
+                        <label for="exportInsights">Key Insights</label>
+                    </div>
+                    <div class="export-option">
+                        <input type="checkbox" id="exportFeatureImportance" checked>
+                        <label for="exportFeatureImportance">Feature Importance</label>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button id="generateReportBtn" class="btn btn-secondary" style="padding: 15px 30px; font-size: 1.1rem;">
+                        <span>📄</span> Generate & Download Report
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div>
+                    <p><strong>Titanic EDA Explorer</strong> | A Sophisticated Data Visualization Tool</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem; opacity: 0.8;">
+                        Built with D3.js, Plotly.js, and vanilla JavaScript
+                    </p>
+                </div>
+                <div>
+                    <p>Designed for deployment on GitHub Pages</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <script>
+        // Main Application State
+        const appState = {
+            dataset: null,
+            columns: [],
+            numericColumns: [],
+            categoricalColumns: [],
+            featureImportance: [],
+            keyFinding: null,
+            currentStep: 1
+        };
+        
+        // Nautical Color Palette
+        const colors = {
+            survived: '#4a9c8f',  // Teal
+            notSurvived: '#1d4e89', // Ocean blue
+            male: '#1d4e89',
+            female: '#f4b942', // Gold
+            pclass1: '#f4b942',
+            pclass2: '#3e7cb1',
+            pclass3: '#0a2463',
+            gradient: ['#0a2463', '#1d4e89', '#3e7cb1', '#4a9c8f', '#f4b942']
+        };
+        
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const dataPreview = document.getElementById('dataPreview');
+        const previewTable = document.getElementById('previewTable');
+        const summarySection = document.getElementById('summarySection');
+        const summaryStats = document.getElementById('summaryStats');
+        const missingDataChart = document.getElementById('missingDataChart');
+        const univariateSection = document.getElementById('univariateSection');
+        const variableSelect = document.getElementById('variableSelect');
+        const chartTypeSelect = document.getElementById('chartTypeSelect');
+        const univariateChart = document.getElementById('univariateChart');
+        const variableStats = document.getElementById('variableStats');
+        const bivariateSection = document.getElementById('bivariateSection');
+        const bivariateVariableSelect = document.getElementById('bivariateVariableSelect');
+        const bivariateChart = document.getElementById('bivariateChart');
+        const correlationChart = document.getElementById('correlationChart');
+        const insightsSection = document.getElementById('insightsSection');
+        const featureImportance = document.getElementById('featureImportance');
+        const keyFindingText = document.getElementById('keyFindingText');
+        const keyFindingMetric = document.getElementById('keyFindingMetric');
+        const survivalDisparityChart = document.getElementById('survivalDisparityChart');
+        const exportSection = document.getElementById('exportSection');
+        const exportBtn = document.getElementById('exportBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const generateReportBtn = document.getElementById('generateReportBtn');
+        const steps = {
+            step1: document.getElementById('step1'),
+            step2: document.getElementById('step2'),
+            step3: document.getElementById('step3'),
+            step4: document.getElementById('step4')
+        };
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', initApp);
+        
+        /**
+         * Initialize the application with event listeners and default state
+         */
+        function initApp() {
+            // Set up event listeners
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('drop', handleFileDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            resetBtn.addEventListener('click', resetAnalysis);
+            exportBtn.addEventListener('click', showExportSection);
+            generateReportBtn.addEventListener('click', generateReport);
+            
+            variableSelect.addEventListener('change', updateUnivariateAnalysis);
+            chartTypeSelect.addEventListener('change', updateUnivariateAnalysis);
+            bivariateVariableSelect.addEventListener('change', updateBivariateAnalysis);
+            
+            // Initialize with sample data for demonstration
+            // In a real scenario, you might want to load a sample dataset
+            console.log('Titanic EDA Explorer initialized. Ready for CSV upload.');
+        }
+        
+        /**
+         * Handle file selection via browse button
+         */
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                parseCSV(file);
+            }
+        }
+        
+        /**
+         * Handle drag over event for file drop
+         */
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadArea.style.borderColor = colors.survived;
+            uploadArea.style.backgroundColor = 'rgba(74, 156, 143, 0.1)';
+        }
+        
+        /**
+         * Handle file drop event
+         */
+        function handleFileDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadArea.style.borderColor = '#3e7cb1';
+            uploadArea.style.backgroundColor = 'rgba(62, 124, 177, 0.05)';
+            
+            const file = event.dataTransfer.files[0];
+            if (file && file.type === 'text/csv') {
+                parseCSV(file);
+            } else {
+                alert('Please drop a CSV file.');
+            }
+        }
+        
+        /**
+         * Parse CSV file using PapaParse
+         */
+        function parseCSV(file) {
+            showLoading(true);
+            
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data.length === 0) {
+                        alert('The CSV file appears to be empty.');
+                        showLoading(false);
+                        return;
+                    }
+                    
+                    // Store dataset in app state
+                    appState.dataset = results.data;
+                    appState.columns = results.meta.fields || Object.keys(results.data[0]);
+                    
+                    // Categorize columns as numeric or categorical
+                    categorizeColumns();
+                    
+                    // Update UI with data preview
+                    updateDataPreview();
+                    
+                    // Generate initial summary
+                    generateSummary();
+                    
+                    // Update analysis controls
+                    updateAnalysisControls();
+                    
+                    // Calculate feature importance
+                    calculateFeatureImportance();
+                    
+                    // Update steps
+                    updateStep(2);
+                    
+                    // Enable export button
+                    exportBtn.disabled = false;
+                    
+                    showLoading(false);
+                    
+                    console.log(`Dataset loaded: ${appState.dataset.length} rows, ${appState.columns.length} columns`);
+                },
+                error: function(error) {
+                    alert(`Error parsing CSV: ${error.message}`);
+                    showLoading(false);
+                }
+            });
+        }
+        
+        /**
+         * Categorize columns as numeric or categorical based on data types
+         */
+        function categorizeColumns() {
+            appState.numericColumns = [];
+            appState.categoricalColumns = [];
+            
+            if (!appState.dataset || appState.dataset.length === 0) return;
+            
+            // Sample first row to determine column types
+            const sampleRow = appState.dataset[0];
+            
+            appState.columns.forEach(column => {
+                // Skip Survived column as it's our target
+                if (column === 'Survived') return;
+                
+                const value = sampleRow[column];
+                
+                // Check if the column appears to be numeric
+                if (typeof value === 'number' && !isNaN(value)) {
+                    // Additional check: if more than 50% of values are numeric, consider it numeric
+                    const numericCount = appState.dataset.filter(row => 
+                        typeof row[column] === 'number' && !isNaN(row[column])
+                    ).length;
+                    
+                    if (numericCount / appState.dataset.length > 0.5) {
+                        appState.numericColumns.push(column);
+                    } else {
+                        appState.categoricalColumns.push(column);
+                    }
+                } else {
+                    appState.categoricalColumns.push(column);
+                }
+            });
+            
+            // Ensure 'Survived' is in categorical columns for analysis
+            if (appState.columns.includes('Survived') && !appState.categoricalColumns.includes('Survived')) {
+                appState.categoricalColumns.push('Survived');
+            }
+            
+            console.log(`Numeric columns: ${appState.numericColumns.join(', ')}`);
+            console.log(`Categorical columns: ${appState.categoricalColumns.join(', ')}`);
+        }
+        
+        /**
+         * Update data preview table with first 10 rows
+         */
+        function updateDataPreview() {
+            if (!appState.dataset || appState.dataset.length === 0) return;
+            
+            // Show preview section
+            dataPreview.classList.remove('hidden');
+            
+            // Clear existing table
+            previewTable.innerHTML = '';
+            
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            appState.columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            previewTable.appendChild(thead);
+            
+            // Create table body with first 10 rows
+            const tbody = document.createElement('tbody');
+            const rowCount = Math.min(10, appState.dataset.length);
+            
+            for (let i = 0; i < rowCount; i++) {
+                const row = document.createElement('tr');
+                const rowData = appState.dataset[i];
+                
+                appState.columns.forEach(column => {
+                    const td = document.createElement('td');
+                    const value = rowData[column];
+                    
+                    // Format display based on data type
+                    if (value === null || value === undefined || value === '') {
+                        td.textContent = 'NaN';
+                        td.style.color = '#dc3545';
+                        td.style.fontStyle = 'italic';
+                    } else if (typeof value === 'number') {
+                        td.textContent = Number.isInteger(value) ? value : value.toFixed(2);
+                    } else {
+                        td.textContent = value;
+                    }
+                    
+                    row.appendChild(td);
+                });
+                
+                tbody.appendChild(row);
+            }
+            
+            previewTable.appendChild(tbody);
+        }
+        
+        /**
+         * Generate dataset summary statistics
+         */
+        function generateSummary() {
+            if (!appState.dataset || appState.dataset.length === 0) return;
+            
+            // Show summary section
+            summarySection.classList.remove('hidden');
+            
+            // Calculate basic statistics
+            const rowCount = appState.dataset.length;
+            const columnCount = appState.columns.length;
+            
+            // Count missing values per column
+            const missingCounts = {};
+            appState.columns.forEach(column => {
+                missingCounts[column] = appState.dataset.filter(row => 
+                    row[column] === null || row[column] === undefined || row[column] === ''
+                ).length;
+            });
+            
+            // Calculate overall missing percentage
+            const totalCells = rowCount * columnCount;
+            const totalMissing = Object.values(missingCounts).reduce((a, b) => a + b, 0);
+            const missingPercentage = ((totalMissing / totalCells) * 100).toFixed(1);
+            
+            // Update summary stats grid
+            summaryStats.innerHTML = `
+                <div class="summary-item">
+                    <h4>Total Rows</h4>
+                    <p>${rowCount.toLocaleString()}</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Total Columns</h4>
+                    <p>${columnCount}</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Numeric Columns</h4>
+                    <p>${appState.numericColumns.length}</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Categorical Columns</h4>
+                    <p>${appState.categoricalColumns.length}</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Missing Values</h4>
+                    <p>${totalMissing.toLocaleString()} (${missingPercentage}%)</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Survival Rate</h4>
+                    <p>${calculateSurvivalRate().toFixed(1)}%</p>
+                </div>
+            `;
+            
+            // Create missing data heatmap
+            createMissingDataHeatmap(missingCounts);
+        }
+        
+        /**
+         * Calculate overall survival rate from dataset
+         */
+        function calculateSurvivalRate() {
+            if (!appState.dataset || !appState.columns.includes('Survived')) return 0;
+            
+            const survivedCount = appState.dataset.filter(row => row.Survived === 1).length;
+            return (survivedCount / appState.dataset.length) * 100;
+        }
+        
+        /**
+         * Create missing data heatmap using D3.js
+         */
+        function createMissingDataHeatmap(missingCounts) {
+            // Clear previous chart
+            d3.select(missingDataChart).selectAll("*").remove();
+            
+            if (!appState.dataset || appState.dataset.length === 0) return;
+            
+            const width = missingDataChart.clientWidth;
+            const height = 300;
+            const margin = { top: 50, right: 30, bottom: 100, left: 150 };
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;
+            
+            // Create SVG
+            const svg = d3.select(missingDataChart)
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Prepare data
+           
