@@ -1,4 +1,5 @@
 // app.js 
+/*
  * Titanic EDA Dashboard
  * Main JavaScript Application
  * 
