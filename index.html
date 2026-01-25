@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titanic EDA Dashboard | Survival Analysis</title>
+    <!-- Bootstrap 5 CSS for polished components and responsive layout -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --titanic-blue: #1e3a8a;
+            --titanic-light-blue: #3b82f6;
+            --titanic-gray: #6b7280;
+            --titanic-light-gray: #f3f4f6;
+            --survived-color: #10b981;
+            --not-survived-color: #ef4444;
+            --chart-grid-color: #e5e7eb;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--titanic-blue), #2d4ba3);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2.5rem;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
+        }
+        
+        .dashboard-title {
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .dashboard-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .section-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .section-title {
+            color: var(--titanic-blue);
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--titanic-light-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .section-title i {
+            font-size: 1.25rem;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .data-table {
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .data-table th {
+            background-color: var(--titanic-light-gray);
+            font-weight: 600;
+        }
+        
+        .insight-card {
+            background: linear-gradient(to right, #f0f9ff, #e0f2fe);
+            border-left: 4px solid var(--titanic-light-blue);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+        }
+        
+        .key-finding {
+            background: linear-gradient(to right, #dcfce7, #bbf7d0);
+            border-left: 4px solid var(--survived-color);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-top: 1.5rem;
+        }
+        
+        .key-finding-title {
+            color: #065f46;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+        
+        .btn-primary {
+            background-color: var(--titanic-blue);
+            border-color: var(--titanic-blue);
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover {
+            background-color: #1e40af;
+            border-color: #1e40af;
+        }
+        
+        .btn-success {
+            background-color: var(--survived-color);
+            border-color: var(--survived-color);
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+        }
+        
+        .status-message {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .stat-badge {
+            background-color: var(--titanic-light-gray);
+            color: var(--titanic-blue);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        footer {
+            background-color: var(--titanic-light-gray);
+            color: var(--titanic-gray);
+            padding: 1.5rem 0;
+            margin-top: 3rem;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .dashboard-title {
+                font-size: 2rem;
+            }
+            
+            .section-card {
+                padding: 1.25rem;
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <h1 class="dashboard-title text-center">Titanic EDA Dashboard</h1>
+            <p class="dashboard-subtitle text-center">
+                An interactive Exploratory Data Analysis dashboard investigating the Titanic dataset. 
+                Analyze distributions, missing data, correlations, and identify key factors associated with passenger survival.
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Data Load & Overview Section -->
+        <section class="section-card">
+            <h2 class="section-title">
+                <span>📁</span> Data Load & Overview
+            </h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <label for="csvFile" class="form-label fw-bold">Upload Titanic Dataset (CSV)</label>
+                        <input class="form-control" type="file" id="csvFile" accept=".csv">
+                        <div class="form-text">
+                            Download the dataset from 
+                            <a href="https://www.kaggle.com/datasets/yasserh/titanic-dataset?resource=download" target="_blank">Kaggle</a> 
+                            and upload the CSV file (should be named 'Titanic-Dataset.csv')
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <button id="loadDataBtn" class="btn btn-primary">
+                            Load & Analyze Data
+                        </button>
+                        <button id="generateReportBtn" class="btn btn-success" disabled>
+                            Generate Full Report
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Dataset Schema:</strong> The dataset contains information about Titanic passengers including:
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Target:</strong> 'Survived' (0 = No, 1 = Yes)</li>
+                            <li><strong>Features:</strong> 'Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked'</li>
+                            <li><strong>Identifiers:</strong> 'PassengerId', 'Ticket', 'Cabin'</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="statusMessage" class="status-message alert alert-info" role="alert"></div>
+            <div id="loadingSpinner" class="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Processing data... This may take a moment.</p>
+            </div>
+            
+            <!-- Data Preview -->
+            <div id="dataOverview" style="display: none;">
+                <h4 class="mt-4 mb-3">Data Preview (First 10 Rows)</h4>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover data-table">
+                        <thead id="previewHeader"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                <div class="d-flex flex-wrap mt-3">
+                    <span class="stat-badge" id="shapeStat"></span>
+                    <span class="stat-badge" id="survivalStat"></span>
+                    <span class="stat-badge" id="featuresStat"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Quality Section -->
+        <section class="section-card">
+            <h2 class="section-title">
+                <span>🔍</span> Data Quality Analysis
+            </h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <h5>Missing Data by Column</h5>
+                    <div class="chart-container">
+                        <canvas id="missingDataChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h5>Data Types Summary</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="dataTypesTable">
+                            <thead>
+                                <tr>
+                                    <th>Column</th>
+                                    <th>Data Type</th>
+                                    <th>Unique Values</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Univariate Analysis Section -->
+        <section class="section-card">
+            <h2 class="section-title">
+                <span>📊</span> Univariate Analysis (Distributions)
+            </h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <h5>Categorical Features</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="pclassChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="sexChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="chart-container">
+                                <canvas id="embarkedChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h5>Numeric Features</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="ageChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="fareChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="sibspChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="parchChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bivariate Analysis & Correlations Section -->
+        <section class="section-card">
+            <h2 class="section-title">
+                <span>🔗</span> Bivariate Analysis & Correlations
+            </h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <h5>Survival Rates by Feature</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="survivalByPclass"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="survivalBySex"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="survivalByEmbarked"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="survivalByAgeGroup"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h5>Correlation Heatmap</h5>
+                    <p class="text-muted">Numeric feature correlations with survival</p>
+                    <div class="chart-container">
+                        <canvas id="correlationChart"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">Correlation values range from -1 (perfect negative) to +1 (perfect positive)</small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Outlier Detection Section -->
+        <section class="section-card">
+            <h2 class="section-title">
+                <span>📈</span> Outlier Detection
+            </h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <h5>Outlier Summary (IQR Method)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="outlierTable">
+                            <thead>
+                                <tr>
+                                    <th>Column</th>
+                                    <th>Total Values</th>
+                                    <th>Outliers Count</th>
+                                    <th>Outliers %</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-warning mt-3">
+                        <strong>Note:</strong> Outliers are detected using the Interquartile Range (IQR) method: 
+                        Values below Q1 - 1.5×IQR or above Q3 + 1.5×IQR are considered outliers.
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h5>Fare Distribution with Outliers</h5>
+                    <div class="chart-container">
+                        <canvas id="fareBoxPlot"></canvas>
+                    </div>
+                    <p class="text-muted mt-2">
+                        High-fare outliers represent extremely expensive tickets, which may indicate first-class passengers.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Patterns & Key Insights Section -->
+        <section class="section-card">
+            <h2 class="section-title">
+                <span>💡</span> Patterns & Key Insights
+            </h2>
+            <div id="insightsContainer"></div>
+            
+            <!-- Key Finding Box -->
+            <div id="keyFinding" class="key-finding" style="display: none;">
+                <h3 class="key-finding-title">🔑 Key Finding: Most Important Factor for Survival</h3>
+                <p id="keyFindingText" class="mb-0"></p>
+            </div>
+        </section>
+
+        <!-- Export Section -->
+        <section class="section-card">
+            <h2 class="section-title">
+                <span>💾</span> Export Analysis
+            </h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-grid gap-3">
+                        <button id="exportJsonBtn" class="btn btn-outline-primary" disabled>
+                            Download Analysis as JSON
+                        </button>
+                        <button id="exportCleanedCsvBtn" class="btn btn-outline-secondary" disabled>
+                            Download Cleaned CSV (NaN filled)
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-light">
+                        <strong>Export Options:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>JSON:</strong> Complete analysis results including statistics, insights, and key findings</li>
+                            <li><strong>Cleaned CSV:</strong> Dataset with missing values filled (median for numeric, mode for categorical)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p class="mb-0">Titanic EDA Dashboard &copy; 2023 | Built with Chart.js, PapaParse, and Bootstrap</p>
+            <p class="small text-muted mt-2">
+                This dashboard performs Exploratory Data Analysis entirely in the browser. No data is sent to external servers.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Link to JavaScript file -->
+    <script src="app.js"></script>
+</body>
+</html>
