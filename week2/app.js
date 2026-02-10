@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // DATA LOADING & MERGING
 // ============================================================================
 
-async function loadAndMergeData() {
+function loadAndMergeData() {
     const trainFile = document.getElementById('trainFile').files[0];
     const testFile = document.getElementById('testFile').files[0];
     
@@ -73,72 +73,67 @@ async function loadAndMergeData() {
     spinner.style.display = 'inline-block';
     loadBtn.disabled = true;
     
-    try {
-        // Parse training data
-        const trainPromise = new Promise((resolve, reject) => {
-            Papa.parse(trainFile, {
-                header: true,
-                dynamicTyping: true,
-                skipEmptyLines: true,
-                complete: resolve,
-                error: reject
-            });
+    // Parse files sequentially to avoid issues
+    parseCSV(trainFile)
+        .then(trainResults => {
+            if (trainResults.errors.length > 0) {
+                throw new Error('Train CSV error: ' + trainResults.errors[0].message);
+            }
+            trainData = trainResults.data;
+            trainData.forEach(row => row._isTrain = true);
+            
+            return parseCSV(testFile);
+        })
+        .then(testResults => {
+            if (testResults.errors.length > 0) {
+                throw new Error('Test CSV error: ' + testResults.errors[0].message);
+            }
+            testData = testResults.data;
+            testData.forEach(row => row._isTrain = false);
+            
+            // Merge for EDA
+            mergedData = [...trainData, ...testData];
+            allData = mergedData; // Alias for EDA functions
+            
+            console.log(`Loaded ${trainData.length} training rows and ${testData.length} test rows`);
+            
+            // Update UI
+            updateDatasetOverview();
+            
+            // Show dataset overview section
+            document.getElementById('datasetOverview').style.display = 'block';
+            
+            // Reset button
+            buttonText.textContent = '📁 Load & Merge Datasets';
+            spinner.style.display = 'none';
+            loadBtn.disabled = false;
+            
+            // Show success message
+            alert(`Successfully loaded datasets!\n\nTraining data: ${trainData.length} passengers\nTest data: ${testData.length} passengers\nTotal: ${mergedData.length} passengers`);
+            
+        })
+        .catch(error => {
+            alert('Error loading files: ' + error.message);
+            console.error('Load error:', error);
+            
+            // Reset button
+            buttonText.textContent = '📁 Load & Merge Datasets';
+            spinner.style.display = 'none';
+            loadBtn.disabled = false;
         });
-        
-        // Parse test data
-        const testPromise = new Promise((resolve, reject) => {
-            Papa.parse(testFile, {
-                header: true,
-                dynamicTyping: true,
-                skipEmptyLines: true,
-                complete: resolve,
-                error: reject
-            });
+}
+
+// Helper function to parse CSV
+function parseCSV(file) {
+    return new Promise((resolve, reject) => {
+        Papa.parse(file, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: resolve,
+            error: reject
         });
-        
-        const [trainResults, testResults] = await Promise.all([trainPromise, testPromise]);
-        
-        if (trainResults.errors.length > 0) {
-            throw new Error('Train CSV error: ' + trainResults.errors[0].message);
-        }
-        if (testResults.errors.length > 0) {
-            throw new Error('Test CSV error: ' + testResults.errors[0].message);
-        }
-        
-        // Store data
-        trainData = trainResults.data;
-        testData = testResults.data;
-        
-        // Add isTrain flag for later separation
-        trainData.forEach(row => row._isTrain = true);
-        testData.forEach(row => row._isTrain = false);
-        
-        // Merge for EDA
-        mergedData = [...trainData, ...testData];
-        allData = mergedData; // Alias for EDA functions
-        
-        console.log(`Loaded ${trainData.length} training rows and ${testData.length} test rows`);
-        
-        // Update UI
-        updateDatasetOverview();
-        
-        // Show dataset overview section
-        document.getElementById('datasetOverview').style.display = 'block';
-        
-        // Reset button
-        buttonText.textContent = '📁 Load & Merge Datasets';
-        spinner.style.display = 'none';
-        loadBtn.disabled = false;
-        
-    } catch (error) {
-        alert('Error loading files: ' + error.message);
-        console.error('Load error:', error);
-        
-        // Reset button
-        buttonText.textContent = '📁 Load & Merge Datasets';
-        spinner.style.display = 'none';
-        loadBtn.disabled = false;
-    }
+    });
 }
 
 function updateDatasetOverview() {
