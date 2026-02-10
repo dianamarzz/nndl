@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titanic Survival Predictor | ML Web App</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="app.js"></script>
+    <style>
+        :root {
+            --primary-blue: #2c3e50;
+            --secondary-blue: #3498db;
+            --light-blue: #ecf0f1;
+            --accent-blue: #2980b9;
+            --success-green: #27ae60;
+            --warning-orange: #f39c12;
+            --error-red: #e74c3c;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--card-shadow);
+            border-left: 5px solid var(--secondary-blue);
+        }
+        
+        h1 {
+            color: var(--primary-blue);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease;
+            border-top: 3px solid var(--secondary-blue);
+        }
+        
+        .section-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        h2 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-blue);
+            font-size: 1.5rem;
+        }
+        
+        h3 {
+            color: var(--accent-blue);
+            margin: 20px 0 10px;
+        }
+        
+        h4 {
+            color: var(--text-dark);
+            margin: 15px 0 8px;
+        }
+        
+        .btn {
+            background: var(--secondary-blue);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px;
+        }
+        
+        .btn:hover:not(:disabled) {
+            background: var(--accent-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-success {
+            background: var(--success-green);
+        }
+        
+        .btn-warning {
+            background: var(--warning-orange);
+        }
+        
+        .btn-error {
+            background: var(--error-red);
+        }
+        
+        .file-input {
+            padding: 15px;
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            margin: 15px 0;
+            background: #f8f9fa;
+        }
+        
+        .file-input:hover {
+            border-color: var(--secondary-blue);
+        }
+        
+        .status-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            background: #f8f9fa;
+            border-left: 4px solid var(--secondary-blue);
+        }
+        
+        .success-message {
+            background: #d5edda;
+            border-left-color: var(--success-green);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .warning-message {
+            background: #fff3cd;
+            border-left-color: var(--warning-orange);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            border-left-color: var(--error-red);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        
+        .data-table, .prediction-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            min-width: 800px;
+        }
+        
+        .data-table th, .prediction-table th {
+            background: var(--light-blue);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary-blue);
+            position: sticky;
+            left: 0;
+        }
+        
+        .data-table td, .prediction-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .survived-yes {
+            color: var(--success-green);
+            font-weight: bold;
+        }
+        
+        .survived-no {
+            color: var(--error-red);
+            font-weight: bold;
+        }
+        
+        .confidence-high { color: var(--success-green); }
+        .confidence-medium { color: var(--warning-orange); }
+        .confidence-low { color: var(--error-red); }
+        
+        .stats-grid, .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card, .metric {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--secondary-blue);
+            margin: 10px 0;
+        }
+        
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .insight-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--secondary-blue);
+        }
+        
+        .insight-bar {
+            margin: 10px 0;
+        }
+        
+        .bar-label {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        .bar {
+            height: 20px;
+            background: linear-gradient(90deg, var(--secondary-blue), var(--accent-blue));
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+        
+        .model-layers {
+            margin: 20px 0;
+        }
+        
+        .layer {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid var(--secondary-blue);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .layer-name {
+            font-weight: 600;
+            color: var(--primary-blue);
+        }
+        
+        .layer-details {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .confusion-matrix {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 2px;
+            margin: 20px 0;
+            max-width: 500px;
+        }
+        
+        .cm-header, .cm-row {
+            display: contents;
+        }
+        
+        .cm-header > div, .cm-actual, .cm-cell {
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        
+        .cm-header {
+            font-weight: bold;
+            background: var(--light-blue);
+        }
+        
+        .cm-actual {
+            font-weight: bold;
+            background: var(--light-blue);
+        }
+        
+        .cm-cell {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .tp { background: #d5edda; color: #155724; }
+        .fp { background: #f8d7da; color: #721c24; }
+        .fn { background: #f8d7da; color: #721c24; }
+        .tn { background: #d5edda; color: #155724; }
+        
+        small {
+            font-size: 0.8rem;
+            font-weight: normal;
+            display: block;
+            margin-top: 5px;
+        }
+        
+        .importance-chart {
+            margin: 20px 0;
+        }
+        
+        .importance-item {
+            margin: 15px 0;
+        }
+        
+        .importance-label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .importance-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .importance-bar {
+            height: 20px;
+            background: linear-gradient(90deg, var(--secondary-blue), var(--accent-blue));
+            border-radius: 4px;
+            min-width: 30px;
+        }
+        
+        .importance-value {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            min-width: 60px;
+        }
+        
+        .key-finding {
+            background: #e8f4fc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--secondary-blue);
+        }
+        
+        .key-finding h4 {
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+        }
+        
+        .slider-container {
+            margin: 25px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--light-blue);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--secondary-blue);
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .progress-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            border-left: 4px solid var(--secondary-blue);
+        }
+        
+        .checkbox-group {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        
+        .prediction-stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--secondary-blue);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .section-card {
+                padding: 20px;
+            }
+            
+            .data-table, .prediction-table {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚢 Titanic Survival Predictor</h1>
+            <p class="subtitle">A machine learning web application that predicts passenger survival using TensorFlow.js. 
+            Upload Titanic dataset CSV files to train a model and generate predictions.</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Data Loading Section -->
+            <div class="section-card">
+                <h2>1. Upload Data</h2>
+                <p>Upload the Titanic dataset CSV files to begin analysis.</p>
+                
+                <div class="file-input">
+                    <label><strong>Training Data</strong> (train.csv)</label>
+                    <input type="file" id="train-file" accept=".csv" style="margin: 10px 0; display: block;">
+                </div>
+                
+                <div class="file-input">
+                    <label><strong>Test Data</strong> (test.csv)</label>
+                    <input type="file" id="test-file" accept=".csv" style="margin: 10px 0; display: block;">
+                </div>
+                
+                <button class="btn" onclick="loadData()">
+                    📁 Load Data Files
+                </button>
+                
+                <div id="data-status" class="status-box">
+                    Ready to load data files...
+                </div>
+            </div>
+
+            <!-- Data Inspection Section -->
+            <div class="section-card">
+                <h2>2. Explore Data</h2>
+                <p>Inspect the dataset structure and view key statistics.</p>
+                
+                <button class="btn" id="inspect-btn" onclick="inspectData()" disabled>
+                    🔍 Inspect Data
+                </button>
+                
+                <div id="data-preview"></div>
+                <div id="data-stats"></div>
+                <div id="charts"></div>
+            </div>
+
+            <!-- Preprocessing Section -->
+            <div class="section-card">
+                <h2>3. Prepare Data</h2>
+                <p>Clean and transform data for machine learning.</p>
+                
+                <button class="btn" id="preprocess-btn" onclick="preprocessData()" disabled>
+                    ⚙️ Preprocess Data
+                </button>
+                
+                <div id="preprocessing-output" class="status-box">
+                    Data preprocessing will begin after loading...
+                </div>
+            </div>
+
+            <!-- Model Creation Section -->
+            <div class="section-card">
+                <h2>4. Build Model</h2>
+                <p>Configure the neural network architecture with feature importance analysis.</p>
+                
+                <button class="btn" id="create-model-btn" onclick="createModel()" disabled>
+                    🧠 Create Model
+                </button>
+                
+                <div id="model-summary" class="status-box">
+                    Model details will appear here...
+                </div>
+                
+                <!-- Feature Importance Insights -->
+                <div id="model-insights" class="status-box" style="margin-top: 20px;">
+                    <h3>Feature Importance</h3>
+                    <p>Feature importance analysis will be displayed after training.</p>
+                </div>
+            </div>
+
+            <!-- Training Section -->
+            <div class="section-card">
+                <h2>5. Train Model</h2>
+                <p>Train the neural network on the Titanic dataset (50 epochs).</p>
+                
+                <button class="btn" id="train-btn" onclick="trainModel()" disabled>
+                    🎯 Train Model
+                </button>
+                
+                <div id="training-status" class="status-box">
+                    Training will begin after model creation...
+                </div>
+            </div>
+
+            <!-- Evaluation Section -->
+            <div class="section-card">
+                <h2>6. Evaluate Model</h2>
+                <p>Assess model performance with interactive metrics.</p>
+                
+                <div class="slider-container">
+                    <label><strong>Classification Threshold:</strong> <span id="threshold-value">0.50</span></label>
+                    <input type="range" id="threshold-slider" class="slider" min="0" max="1" step="0.01" value="0.5" disabled>
+                    <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 10px;">
+                        Adjust threshold to balance precision and recall
+                    </p>
+                </div>
+                
+                <h3>Performance Metrics</h3>
+                <div id="performance-metrics" class="metrics-grid"></div>
+                
+                <h3 style="margin-top: 25px;">Confusion Matrix</h3>
+                <div id="confusion-matrix"></div>
+            </div>
+
+            <!-- Prediction Section -->
+            <div class="section-card">
+                <h2>7. Generate Predictions</h2>
+                <p>Apply the trained model to make survival predictions.</p>
+                
+                <button class="btn" id="predict-btn" onclick="predict()" disabled>
+                    🔮 Predict Survival
+                </button>
+                
+                <div id="prediction-output" class="status-box">
+                    Predictions will appear here...
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Titanic Survival Predictor | Built with TensorFlow.js</p>
+            <p>This application demonstrates end-to-end machine learning in the browser.</p>
+        </footer>
+    </div>
+</body>
+</html>
