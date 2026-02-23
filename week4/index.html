@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network Design: The Gradient Puzzle</title>
+    <style>
+        body {
+            background: #1a1a1a; /* very dark grey */
+            color: #b0d4ff;      /* light blue base text */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #7abfff;       /* light blue */
+            margin-bottom: 5px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+        .sub {
+            color: #8cb3d9;       /* softer light blue */
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        .panel {
+            background: #2a2a2a;   /* dark grey panel */
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.6);
+            border: 1px solid #3d4d5e;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #2f4052;   /* blue-grey */
+            color: #e3f0ff;
+            border: 1px solid #4d6f8a;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #3e566b;
+        }
+        button.primary {
+            background: #4d9eff;   /* light blue primary */
+            color: #141414;
+            border: none;
+        }
+        button.primary:hover {
+            background: #7ab7ff;
+        }
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            background: #1f2a33;   /* very dark blue-grey */
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #355067;
+        }
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #b4d9ff;
+        }
+        .radio-group input[type="radio"] {
+            accent-color: #7abfff;
+        }
+        .canvas-grid {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .canvas-item {
+            text-align: center;
+            background: #242424;    /* dark grey card */
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.6);
+            border: 1px solid #3f5568;
+        }
+        .canvas-item div {
+            color: #b0d9ff;
+            font-weight: 400;
+        }
+        canvas {
+            display: block;
+            margin: 10px auto;
+            border: 2px solid #3a5068;
+            image-rendering: pixelated;
+            width: 160px;
+            height: 160px;
+            background: #1e1e1e;
+        }
+        .log {
+            background: #1f1f1f;   /* dark background for log */
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            height: 100px;
+            overflow-y: auto;
+            border-left: 4px solid #7abfff;
+            color: #bfdfff;
+            border: 1px solid #3b5a78;
+        }
+        .log .error {
+            color: #ff9f9f;
+        }
+        .log .info {
+            color: #9bff9b;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #7f9fbf;
+        }
+    </style>
+</head>
+<body>
+    <h1>Neural Network Design: The Gradient Puzzle</h1>
+    <div class="sub"></div> <!-- intentionally empty -->
+
+    <div class="container">
+        <div class="panel">
+            <div class="button-group">
+                <button id="trainStep" class="primary">Train 1 Step</button>
+                <button id="autoTrain">▶ Auto Train</button>
+                <button id="reset">⟲ Reset Weights</button>
+            </div>
+            <div class="radio-group" id="archSelector">
+                <label><input type="radio" name="arch" value="compression" checked> Compression</label>
+                <label><input type="radio" name="arch" value="transformation"> Transformation</label>
+                <label><input type="radio" name="arch" value="expansion"> Expansion</label>
+            </div>
+        </div>
+
+        <div class="canvas-grid">
+            <div class="canvas-item">
+                <div>Input (fixed noise)</div>
+                <canvas id="canvasInput" width="16" height="16"></canvas>
+            </div>
+            <div class="canvas-item">
+                <div>Baseline (MSE only)</div>
+                <canvas id="canvasBaseline" width="16" height="16"></canvas>
+            </div>
+            <div class="canvas-item">
+                <div>Student (custom loss + architecture)</div>
+                <canvas id="canvasStudent" width="16" height="16"></canvas>
+            </div>
+        </div>
+
+        <div class="log" id="logArea">
+            > Ready. Step 0 | Baseline loss: — | Student loss: —<br>
+        </div>
+    </div>
+
+    <footer></footer> <!-- empty footer, keeping only the structure -->
+
+    <!-- TensorFlow.js and main script -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
