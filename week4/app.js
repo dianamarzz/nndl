@@ -9,8 +9,8 @@ let stepCount = 0;
 let autoTraining = false;
 let currentArch = 'compression';
 
-const LAMBDA_TV = 0.05;
-const LAMBDA_DIR = 0.005;
+const LAMBDA_TV = 0.01;
+const LAMBDA_DIR = 0.001;
 
 // --- Utility functions ---
 function log(message, isError = false) {
@@ -76,7 +76,7 @@ function createStudentModel(archType) {
 
     model.add(tf.layers.dense({ units: 256, activation: 'sigmoid' }));
     model.add(tf.layers.reshape({ targetShape: [16, 16, 1] }));
-    model.compile({ optimizer: tf.train.adam(0.01), loss: studentLossFn });
+    model.compile({ optimizer: tf.train.adam(0.02), loss: studentLossFn });
     return model;
 }
 
@@ -196,7 +196,7 @@ async function init() {
     const predStudent = studentModel.predict(xInput);
     updateCanvases(predBase, predStudent);
 
-    log('✅ Models ready! Student uses custom smoothness+direction loss.');
+    log('Models ready! Custom Smoothness + Direction loss is used.');
 
     // Event listeners
     document.getElementById('trainStep').addEventListener('click', () => {
