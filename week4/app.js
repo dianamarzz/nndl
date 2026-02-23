@@ -9,8 +9,8 @@ let stepCount = 0;
 let autoTraining = false;
 let currentArch = 'compression';
 
-const LAMBDA_TV = 0.5;
-const LAMBDA_DIR = 0.05;
+const LAMBDA_TV = 0.05;
+const LAMBDA_DIR = 0.005;
 
 // --- Utility functions ---
 function log(message, isError = false) {
@@ -58,7 +58,7 @@ function createBaselineModel() {
     model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 256, activation: 'sigmoid' }));
     model.add(tf.layers.reshape({ targetShape: [16, 16, 1] }));
-    model.compile({ optimizer: tf.train.adam(0.01), loss: 'meanSquaredError' });
+    model.compile({ optimizer: tf.train.adam(0.02), loss: 'meanSquaredError' });
     return model;
 }
 
