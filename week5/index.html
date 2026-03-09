@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TF.js MNIST · client‑side training (file input)</title>
+    <!-- minimal two‑column layout + preview strip -->
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f5f7fb; margin: 0; min-height: 100vh; display: flex; justify-content: center; padding: 1.5rem; }
+        .app-container { max-width: 1400px; width: 100%; background: white; border-radius: 2rem; box-shadow: 0 20px 40px rgba(0,0,0,0.1); padding: 2rem; }
+
+        /* two‑column layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* file inputs & button bar */
+        .file-section {
+            background: #f9fafc;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            border: 1px solid #e9ecf2;
+        }
+        .file-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .file-row label {
+            background: #eef1f7;
+            padding: 0.4rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #1e293b;
+        }
+        .file-row input { flex: 1; min-width: 200px; background: white; border: 1px solid #ccd7e6; border-radius: 2rem; padding: 0.5rem 1rem; font-size: 0.9rem; }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.7rem;
+            margin: 1.5rem 0 0.5rem;
+        }
+        button {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 0.6rem 1.2rem;
+            border-radius: 3rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.3px;
+            color: #0f172a;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        button.primary { background: #1e3a8a; border-color: #1e3a8a; color: white; }
+        button.warn { background: #b45309; border-color: #b45309; color: white; }
+        button:active { transform: scale(0.96); }
+        button:disabled { opacity: 0.5; pointer-events: none; }
+
+        .status-panel {
+            background: #f0f3f9;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            border: 1px solid #dee5ed;
+        }
+        .status-item { margin: 0.5rem 0; display: flex; gap: 0.5rem; align-items: baseline; }
+        .badge { background: #2d3c5e; color: white; border-radius: 20px; padding: 0.2rem 0.8rem; font-size: 0.8rem; font-weight: 500; }
+
+        .preview-strip {
+            display: flex;
+            flex-direction: row;
+            gap: 1.2rem;
+            margin-top: 1rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+        .preview-card {
+            text-align: center;
+            min-width: 70px;
+        }
+        .preview-card canvas {
+            display: block;
+            margin: 0 auto 6px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background: #111;
+            width: 56px;
+            height: 56px;
+            image-rendering: pixelated;
+        }
+        .preview-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .correct { color: #0b7e3d; background: #e0f2e2; padding: 2px 8px; border-radius: 30px; }
+        .wrong { color: #b00020; background: #ffe0e0; padding: 2px 8px; border-radius: 30px; }
+
+        hr { margin: 2rem 0 1rem; border: 1px solid #e2e8f0; }
+        #model-info { background: #f1f5f9; padding: 1rem 1.5rem; border-radius: 2rem; font-family: 'SF Mono', monospace; font-size: 0.85rem; }
+        #metrics-container { min-height: 40px; }
+    </style>
+    <!-- CDNs: tfjs + tfjs-vis -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@latest"></script>
+</head>
+<body>
+<div class="app-container">
+    <h1 style="margin-top:0;">🧠 MNIST · 100% browser (file I/O)</h1>
+    <!-- two‑column layout -->
+    <div class="grid-2">
+        <!-- LEFT: file uploads & controls -->
+        <div class="file-section">
+            <div class="file-row">
+                <label>📁 train.csv</label>
+                <input type="file" id="train-file" accept=".csv,text/csv">
+            </div>
+            <div class="file-row">
+                <label>📁 test.csv</label>
+                <input type="file" id="test-file" accept=".csv,text/csv">
+            </div>
+            <div style="display:flex; gap:0.5rem; margin: 0.5rem 0 0;">
+                <span class="badge" id="train-count">train: —</span>
+                <span class="badge" id="test-count">test: —</span>
+            </div>
+
+            <div class="button-group">
+                <button id="load-data-btn" class="primary">⬇️ Load data</button>
+                <button id="train-btn">🚀 Train</button>
+                <button id="evaluate-btn">📊 Evaluate</button>
+                <button id="test-five-btn">🎲 Test 5 random</button>
+            </div>
+            <div class="button-group">
+                <button id="save-model-btn">💾 Save model (download)</button>
+                <button id="load-model-btn">📂 Load model from files</button>
+                <input type="file" id="model-json" accept=".json,application/json" style="display:none;">
+                <input type="file" id="model-weights" accept=".bin,application/octet-stream" style="display:none;">
+                <button id="reset-btn" class="warn">🔄 Reset</button>
+                <button id="toggle-visor-btn">👁️ Toggle visor</button>
+            </div>
+
+            <!-- hidden file inputs for model loading -->
+            <div style="margin-top:1rem; font-size:0.9rem;">
+                <span>Model load: </span>
+                <input type="file" id="model-json-file" accept=".json,application/json" style="width:auto; display:inline-block; width:45%;">
+                <input type="file" id="model-bin-file" accept=".bin,application/octet-stream" style="width:auto; display:inline-block; width:45%;">
+            </div>
+        </div>
+
+        <!-- RIGHT: data status & logs -->
+        <div class="status-panel">
+            <div class="status-item"><span>📋 status:</span> <span id="data-status">awaiting files</span></div>
+            <div class="status-item"><span>📝 training log:</span> <span id="training-log">—</span></div>
+            <div class="status-item"><span>📈 metrics:</span> <span id="metrics-display">—</span></div>
+            <div id="metrics-container"></div> <!-- for tfvis surface -->
+        </div>
+    </div>
+
+    <!-- Random 5 preview row -->
+    <h3>🔍 random 5 preview</h3>
+    <div id="preview-row" class="preview-strip">
+        <!-- canvases will be injected here -->
+        <div class="preview-card">—</div>
+    </div>
+
+    <!-- Model info -->
+    <hr>
+    <div id="model-info">⚙️ model info: not built yet</div>
+</div>
+
+<!-- defer load data-loader.js then app.js -->
+<script src="data-loader.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
