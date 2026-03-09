@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TF.js MNIST — file-based trainer</title>
+    <!-- minimal two‑column + preview strip styling -->
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f5f7fb; margin: 0; min-height: 100vh; display: flex; justify-content: center; }
+        .app { max-width: 1400px; width: 100%; padding: 1.5rem; }
+
+        /* two‑column layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.02);
+            border: 1px solid #e9ecf2;
+        }
+        .card h3 { margin-top: 0; font-weight: 500; color: #1e293b; border-bottom: 1px dashed #d1d9e6; padding-bottom: 0.5rem; }
+
+        /* controls row – compact */
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            align-items: center;
+            margin: 1rem 0 0.5rem;
+        }
+        button, .file-label {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 0.5rem 1rem;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        button:hover, .file-label:hover { background: #f1f4f9; border-color: #94a3b8; }
+        .file-input { display: none; }
+        .status-badge {
+            background: #eef2ff;
+            color: #1e3a8a;
+            border-radius: 40px;
+            padding: 0.25rem 1rem;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        /* preview strip */
+        .preview-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: flex-start;
+            margin-top: 1rem;
+        }
+        .preview-item {
+            text-align: center;
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 0.5rem;
+            border: 1px solid #dee4ed;
+        }
+        .preview-item canvas {
+            display: block;
+            border-radius: 8px;
+            background: #1e1e2f;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .preview-label {
+            margin-top: 0.3rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .correct { color: #0d7c3f; }
+        .wrong { color: #b91c1c; }
+
+        #metricsDisplay { font-weight: 500; margin-left: 0.5rem; }
+        pre { background: #f1f5f9; padding: 0.8rem; border-radius: 12px; overflow-x: auto; font-size: 0.85rem; }
+    </style>
+
+    <!-- TensorFlow.js + tfjs-vis CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@latest"></script>
+
+    <!-- deferred load: data-loader first, then app -->
+    <script src="data-loader.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+<div class="app">
+    <h1 style="margin-bottom: 0.2rem;">🧠 MNIST: local CSV trainer</h1>
+    <p style="color: #475569; margin-top: 0;">upload two CSV files (no header, label + 784 pixels) – all in browser</p>
+
+    <!-- file inputs + main controls (row) -->
+    <div class="card" style="padding: 1rem 1.5rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+            <div>
+                <span class="file-label">📤 train.csv <input type="file" id="trainFileInput" accept=".csv" class="file-input"></span>
+                <span class="file-label" style="margin-left: 0.5rem;">📤 test.csv <input type="file" id="testFileInput" accept=".csv" class="file-input"></span>
+            </div>
+            <div class="btn-group">
+                <button id="loadDataBtn">⬇️ Load data</button>
+                <button id="trainBtn">🚀 Train</button>
+                <button id="evaluateBtn">📊 Evaluate</button>
+                <button id="testFiveBtn">🎲 Test 5 random</button>
+                <button id="saveModelBtn">💾 Save model (download)</button>
+                <button id="resetBtn">🔄 Reset</button>
+                <button id="toggleVisorBtn">👁️ Toggle visor</button>
+            </div>
+        </div>
+        <!-- hidden file inputs for model load (json + bin) -->
+        <div style="margin-top: 0.8rem; display: flex; gap: 1rem; align-items: center;">
+            <span class="file-label">📂 model.json <input type="file" id="modelJsonFile" accept=".json,.json" class="file-input"></span>
+            <span class="file-label">📂 weights.bin <input type="file" id="modelBinFile" accept=".bin" class="file-input"></span>
+            <button id="loadModelBtn">⬆️ Load model from files</button>
+        </div>
+    </div>
+
+    <!-- two‑column area -->
+    <div class="dashboard">
+        <!-- left column: status + training logs + model info -->
+        <div>
+            <div class="card">
+                <h3>📋 data status</h3>
+                <div id="dataStatus">no data loaded</div>
+            </div>
+            <div class="card">
+                <h3>📝 training logs / metrics</h3>
+                <div id="trainingLogs" style="min-height: 70px;">—</div>
+                <div id="metricsDisplay"></div>
+            </div>
+            <div class="card">
+                <h3>🧩 model info</h3>
+                <pre id="modelSummary">(no model)</pre>
+            </div>
+        </div>
+        <!-- right column: preview strip (random 5) + placeholders -->
+        <div>
+            <div class="card">
+                <h3>🎯 random 5 preview</h3>
+                <div id="previewContainer" class="preview-row">
+                    <!-- canvases injected dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- extra note: confusion matrix / per‑class charts appear in tfjs‑vis panel -->
+</div>
+</body>
+</html>
