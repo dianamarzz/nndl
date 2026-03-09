@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST · TF.js client‑side trainer</title>
+    <!-- CDNs: TensorFlow.js + tfjs-vis -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@latest"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f5f7fb; margin: 0; min-height: 100vh; display: flex; justify-content: center; padding: 20px; }
+        .app-container { max-width: 1300px; width: 100%; background: white; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); padding: 30px; }
+
+        /* two‑column layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 22px 24px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.02);
+            border: 1px solid #f0f2f6;
+        }
+
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 24px;
+            background: #f9fafc;
+            padding: 18px 20px;
+            border-radius: 60px;
+        }
+        .file-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 4px 10px 4px 16px;
+            border-radius: 40px;
+            border: 1px solid #e2e6ec;
+        }
+        .file-group label { font-weight: 500; color: #2c3e50; }
+        .file-group input[type="file"] { max-width: 140px; font-size: 0.85rem; }
+
+        button {
+            background: #1e2b3c; color: white; border: none; padding: 10px 22px;
+            border-radius: 40px; font-weight: 600; font-size: 0.9rem;
+            cursor: pointer; transition: 0.15s; box-shadow: 0 2px 6px rgba(0,20,40,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+        }
+        button:hover { background: #2b3e5a; transform: translateY(-1px); }
+        button.secondary { background: #eef2f6; color: #1e2b3c; border: 1px solid #ccd5e0; }
+        button.secondary:hover { background: #e2e8f0; }
+
+        .status-badge {
+            background: #e9ecf3; padding: 8px 18px; border-radius: 40px;
+            font-size: 0.9rem; color: #2c3e50; font-weight: 500;
+        }
+
+        .log-area {
+            background: #1a2634; color: #b4e6f0; padding: 16px; border-radius: 20px;
+            font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9rem;
+            height: 170px; overflow-y: auto; white-space: pre-wrap;
+            line-height: 1.5; border: 1px solid #2a3747;
+        }
+
+        /* preview strip : one row of 5 canvases */
+        .preview-row {
+            display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-around;
+            margin-top: 25px; background: #f8fafd; padding: 20px; border-radius: 40px;
+        }
+        .preview-item {
+            text-align: center; background: white; padding: 14px 10px 12px 10px;
+            border-radius: 28px; box-shadow: 0 5px 12px rgba(0,0,0,0.02);
+            width: 100px;
+        }
+        .preview-item canvas {
+            display: block; margin: 0 auto 8px; border-radius: 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1); background: #eceff4;
+            width: 84px; height: 84px; image-rendering: pixelated;
+        }
+        .pred-label {
+            font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px;
+        }
+        .pred-label.correct { color: #0f6e3f; }
+        .pred-label.wrong { color: #b81b1b; }
+
+        .model-info {
+            background: #f0f4fa; border-radius: 20px; padding: 15px 20px;
+            font-size: 0.9rem; font-family: monospace; border: 1px solid #dde3ec;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <h1 style="margin:0 0 10px 0;">✏️ MNIST · train/run 100% browser</h1>
+    <p style="color:#4f5d73; margin-top:0;">upload CSV files (no header, label+784 pixels) – all client side</p>
+
+    <!-- file inputs + main actions -->
+    <div class="control-panel">
+        <div class="file-group">
+            <label>📚 train:</label>
+            <input type="file" id="train-file" accept=".csv" />
+        </div>
+        <div class="file-group">
+            <label>🧪 test:</label>
+            <input type="file" id="test-file" accept=".csv" />
+        </div>
+        <button id="load-data">⬇️ Load data</button>
+        <button id="train-btn">🏋️ Train</button>
+        <button id="evaluate-btn">📊 Evaluate</button>
+        <button id="test5-btn">🎲 Test 5 random</button>
+        <button id="save-model">💾 Save model</button>
+        <button id="load-model-btn">📂 Load model</button>
+        <button id="reset-btn" class="secondary">♻️ Reset</button>
+        <button id="toggle-visor" class="secondary">👁️ Toggle Visor</button>
+    </div>
+
+    <!-- hidden file input for model.json + weights.bin -->
+    <input type="file" id="model-json-input" accept=".json,.bin" style="display:none;" multiple />
+
+    <!-- Two‑column layout -->
+    <div class="dashboard">
+        <!-- LEFT column: status, logs, metrics, model info -->
+        <div class="card" style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between;">
+                <span class="status-badge" id="data-status">📦 no data</span>
+                <span class="status-badge" id="acc-status">accuracy: —</span>
+            </div>
+            <div>
+                <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                    <span style="font-weight:600;">📋 training log</span>
+                </div>
+                <div id="log-panel" class="log-area">⏳ ready, upload CSV and click Load data</div>
+            </div>
+            <div>
+                <span style="font-weight:600;">📌 model info</span>
+                <div id="model-summary" class="model-info">no model built yet</div>
+            </div>
+            <div>
+                <span style="font-weight:600;">📈 metrics (overall accuracy)</span>
+                <div id="metrics-placeholder" style="height: 80px; background:#f2f5f9; border-radius:20px; margin-top:8px; display:flex; align-items:center; justify-content:center; color:#6f7c8f;">run evaluation → see visor charts</div>
+            </div>
+        </div>
+
+        <!-- RIGHT column: 5‑preview strip + extra -->
+        <div class="card">
+            <span style="font-weight:600;">🖼️ random 5 preview</span>
+            <div id="preview-container" class="preview-row">
+                <!-- dynamically filled with 5 preview-item divs -->
+                <div class="preview-item">—</div><div class="preview-item">—</div><div class="preview-item">—</div><div class="preview-item">—</div><div class="preview-item">—</div>
+            </div>
+            <p style="font-size:0.85rem; color:#4f658d; margin: 20px 0 0 0;">▼ correct (green) / wrong (red) — click Test 5 random</p>
+        </div>
+    </div>
+</div>
+
+<!-- scripts: data-loader first, then app -->
+<script src="data-loader.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
