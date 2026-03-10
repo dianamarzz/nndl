@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST browser · denoising autoencoder</title>
+    <!-- fonts & base style -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+    <!-- minimal iconless style, clean theme -->
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            line-height: 1.5;
+            padding: 2rem 2rem 2.5rem;
+        }
+
+        .app-header {
+            margin-bottom: 2rem;
+        }
+        .app-header h1 {
+            font-weight: 500;
+            font-size: 2.2rem;
+            letter-spacing: -0.02em;
+            color: #0b1e33;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #334155;
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+
+        /* two‑column grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1.2fr 1.8fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* cards */
+        .card {
+            background: #ffffff;
+            border-radius: 1.2rem;
+            padding: 1.5rem 1.5rem 1.8rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.05);
+            border: 1px solid #e9edf2;
+            margin-bottom: 1.8rem;
+        }
+
+        .card h2 {
+            font-weight: 500;
+            font-size: 1.3rem;
+            margin-bottom: 1.2rem;
+            color: #1e293b;
+            border-left: 4px solid #94a3b8;
+            padding-left: 0.75rem;
+        }
+
+        .card h3 {
+            font-weight: 500;
+            font-size: 1.1rem;
+            margin: 1.2rem 0 0.8rem 0;
+            color: #334155;
+        }
+
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem 1rem;
+            align-items: center;
+            margin: 1.2rem 0 0.5rem;
+        }
+
+        .file-row {
+            background: #f1f5f9;
+            border-radius: 2rem;
+            padding: 0.5rem 1rem 0.5rem 1.5rem;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            border: 1px solid #d1d9e6;
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
+
+        .file-label {
+            font-weight: 500;
+            color: #1e3a5f;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"] {
+            font-size: 0.85rem;
+            color: #2c3e50;
+            border: none;
+            background: transparent;
+            flex: 1;
+            min-width: 160px;
+        }
+
+        /* buttons */
+        button {
+            background: #f1f4f9;
+            border: 1px solid #cbd5e1;
+            color: #1e293b;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 0.55rem 1.4rem;
+            border-radius: 2.5rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: 'Inter', sans-serif;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            letter-spacing: 0.01em;
+        }
+
+        button:hover {
+            background: #e6edf5;
+            border-color: #9aa9b9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        button.primary {
+            background: #1e3a5f;
+            border-color: #0f2b44;
+            color: white;
+        }
+        button.primary:hover {
+            background: #143049;
+        }
+
+        .pill-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .radio-row {
+            background: #f1f5f9;
+            border-radius: 2rem;
+            padding: 0.4rem 1rem;
+            display: inline-flex;
+            gap: 1.5rem;
+            border: 1px solid #ccd7e6;
+            margin: 0.75rem 0;
+        }
+        .radio-row label {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.9rem;
+            color: #1e293b;
+        }
+
+        .data-badge {
+            background: #e9edf2;
+            border-radius: 2rem;
+            padding: 0.4rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #253c5c;
+        }
+
+        /* preview strip */
+        .preview-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.2rem;
+            margin: 1.5rem 0 0.5rem;
+        }
+        .preview-col {
+            flex: 1 1 120px;
+            min-width: 90px;
+        }
+        .preview-col .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #59748f;
+            margin-bottom: 0.4rem;
+            font-weight: 500;
+        }
+        .canvas-row {
+            display: flex;
+            flex-direction: row;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .canvas-cell {
+            text-align: center;
+        }
+        .canvas-cell canvas {
+            background: #fcfcfd;
+            border-radius: 12px;
+            border: 1px solid #dde3ea;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            display: block;
+        }
+        .psnr-label {
+            font-size: 0.7rem;
+            color: #1e4d6e;
+            margin-top: 0.2rem;
+            font-weight: 500;
+        }
+
+        #log {
+            background: #f0f4fa;
+            border-radius: 1rem;
+            padding: 1rem;
+            font-size: 0.85rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            border: 1px solid #d2dceb;
+            color: #1e2b3c;
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 1rem 0 0.5rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .info-line {
+            background: #f1f5f9;
+            border-radius: 2rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0 0;
+        }
+
+        .status-tag {
+            background: #d9e2ef;
+            border-radius: 20px;
+            padding: 0.25rem 1rem;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #0f2b40;
+        }
+
+        #timerSpan, #psnrDisplay {
+            font-weight: 500;
+            color: #0b3b5c;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #dee6f0;
+            margin: 1.2rem 0;
+        }
+
+        .file-load-section {
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 1rem 1.2rem;
+            border: 1px dashed #b7c7db;
+            margin-top: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>MNIST browser · denoising autoencoder</h1>
+        <div class="subtitle">compare max‑pooling vs average‑pooling · batch norm · clean interface</div>
+    </div>
+
+    <div class="dashboard">
+        <!-- left column: controls, data status, logs, model info -->
+        <div class="left-col">
+            <div class="card">
+                <h2>Data & model</h2>
+                <!-- file uploads -->
+                <div class="file-row">
+                    <span class="file-label">Train CSV</span>
+                    <input type="file" id="trainFile" accept=".csv">
+                </div>
+                <div class="file-row">
+                    <span class="file-label">Test CSV</span>
+                    <input type="file" id="testFile" accept=".csv">
+                </div>
+
+                <div class="control-group">
+                    <button id="loadDataBtn" class="primary">Load data</button>
+                    <button id="resetBtn">Reset</button>
+                </div>
+
+                <div class="data-badge" id="dataStatus">no data loaded</div>
+
+                <!-- pooling selection (max/avg) -->
+                <div style="margin: 1.2rem 0 0.2rem;">
+                    <span style="font-weight:500; font-size:0.9rem; color:#365a7a;">pooling type</span>
+                </div>
+                <div class="radio-row" id="poolingRadios">
+                    <label><input type="radio" name="pooling" value="max" checked> max‑pooling</label>
+                    <label><input type="radio" name="pooling" value="avg"> average‑pooling</label>
+                </div>
+
+                <!-- model actions -->
+                <div class="control-group" style="margin-top:1.2rem;">
+                    <button id="buildModelBtn">Build model</button>
+                    <button id="trainBtn" class="primary">Train</button>
+                    <button id="testFiveBtn">Test 5 random</button>
+                </div>
+                <div class="pill-group" style="margin-top:0.8rem;">
+                    <button id="saveModelBtn">Save (download)</button>
+                    <button id="toggleVisorBtn">Toggle visor</button>
+                </div>
+
+                <!-- load model from files -->
+                <div class="file-load-section">
+                    <div style="font-weight:500; margin-bottom:0.5rem;">Load existing model</div>
+                    <div class="file-row" style="padding-left:0.8rem;">
+                        <span class="file-label">model.json</span>
+                        <input type="file" id="loadJsonFile" accept=".json,.json">
+                    </div>
+                    <div class="file-row" style="padding-left:0.8rem;">
+                        <span class="file-label">weights.bin</span>
+                        <input type="file" id="loadBinFile" accept=".bin,.weights.bin">
+                    </div>
+                    <button id="loadModelBtn" style="margin-top:0.5rem; width:100%;">Load model from files</button>
+                </div>
+
+                <hr>
+
+                <!-- model info & logs -->
+                <div id="modelInfo" class="info-line" style="background:#eaf0f8;">Model: not built</div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:0.8rem 0 0.2rem;">
+                    <span style="font-weight:500;">training log</span>
+                    <span id="timerSpan" style="font-size:0.85rem; color:#54738f;"></span>
+                </div>
+                <div id="log">Ready. Load CSV files.</div>
+            </div>
+        </div>
+
+        <!-- right column: metrics, preview strip, psnr -->
+        <div class="right-col">
+            <div class="card">
+                <h2>Evaluation & preview</h2>
+
+                <!-- psnr overall -->
+                <div style="display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap;">
+                    <span style="font-weight:500; color:#274c6b;">denoising quality (PSNR)</span>
+                    <span id="psnrDisplay" style="background:#e7edf6; padding:0.2rem 1rem; border-radius:40px;">not evaluated</span>
+                </div>
+
+                <!-- horizontal preview strip (3 rows: original, noisy, denoised) -->
+                <h3 style="margin-top:1.8rem;">random test batch (5 digits)</h3>
+                <div class="preview-strip">
+                    <div class="preview-col">
+                        <div class="label">original</div>
+                        <div id="originalRow" class="canvas-row">—</div>
+                    </div>
+                    <div class="preview-col">
+                        <div class="label">noisy (25%)</div>
+                        <div id="noisyRow" class="canvas-row"></div>
+                    </div>
+                    <div class="preview-col">
+                        <div class="label">denoised</div>
+                        <div id="denoisedRow" class="canvas-row"></div>
+                    </div>
+                </div>
+
+                <!-- tfjs-vis charts will appear in a separate visor, but we mention it -->
+                <div style="background:#f2f6fc; border-radius:1rem; padding:1rem; margin-top:1.5rem;">
+                    <span style="font-weight:500;">tfjs‑vis metrics</span>
+                    <div style="font-size:0.85rem; color:#2b4b6e;">open using “Toggle visor” – loss/mae curves</div>
+                </div>
+
+                <!-- tiny spacer for architecture note -->
+                <div style="margin-top:1rem; font-size:0.8rem; color:#5d7188; border-top:1px solid #dbe4ed; padding-top:0.8rem;">
+                    <span>conv‑bn‑pool‑bottleneck‑upsample · denoising autoencoder</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- tensorflow & tfjs-vis CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis@latest"></script>
+
+    <!-- our modules: data-loader first, then app -->
+    <script type="module" src="./data-loader.js"></script>
+    <script type="module" src="./app.js"></script>
+</body>
+</html>
